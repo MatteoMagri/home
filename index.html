@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matteo Magri | Scientist & Researcher</title>
+  <meta name="description" content="Personal website of Matteo Magri. Scientist in Structural Biology, Synchrotron Science, and Computational Biophysics at ESRF.">
+  <link rel="canonical" href="https://magri.me/">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Matteo Magri | Scientist & Researcher">
+  <meta property="og:description" content="Structural biology, synchrotron instrumentation, and computational biophysics at ESRF.">
+  <meta property="og:url" content="https://magri.me/">
+  <meta property="og:type" content="website">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="#home" class="brand">
+        <svg class="brand-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="64" height="64" rx="14" fill="#0f172a" />
+          <path d="M16 46 V18 L26 34 L32 24 L38 34 L48 18 V46" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="32" cy="24" r="3" fill="#38bdf8" />
+        </svg>
+        <span>Matteo<span class="brand-accent">Magri</span></span>
+      </a>
+
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#about" class="nav-link">About</a></li>
+        <li><a href="#research" class="nav-link">Research</a></li>
+        <li><a href="#projects" class="nav-link">Projects</a></li>
+        <li><a href="#connect" class="nav-link">Connect</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <span id="theme-icon">
+            <!-- Set by JavaScript -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+      <div class="container hero-grid">
+        <div>
+          <div class="hero-pill">
+            <span class="dot"></span>
+            <span>Scientist &bull; Structural Biology &bull; ESRF</span>
+          </div>
+
+          <h1 class="hero-title">Matteo Magri</h1>
+
+          <p class="hero-subtitle">
+            Structural Biology, Synchrotron Science &amp; Computational Biophysics
+          </p>
+
+          <div class="hero-meta">
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              ESRF &bull; Joint Structural Biology Group
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              Grenoble, France
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">ORCID: 0009-0004-0390-3800</a>
+            </span>
+          </div>
+
+          <p class="hero-desc">
+            Investigating macromolecular architecture and dynamics at the intersection of European synchrotron facilities and computational simulation. Focused on beamline experimentation, quantum mechanics/molecular mechanics (QM/MM), and open-source scientific software.
+          </p>
+
+          <div class="hero-cta">
+            <a href="#projects" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              View Projects
+            </a>
+            <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+              ORCID Profile
+            </a>
+            <a href="#connect" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Contact
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Background</div>
+          <h2 class="section-title">About Me</h2>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-text">
+            <p>
+              I am a scientist based at the <strong>European Synchrotron Radiation Facility (ESRF)</strong> in Grenoble, France, actively engaged with the <strong>Joint Structural Biology Group (JSBG)</strong>.
+            </p>
+            <p>
+              My research lies at the nexus of high-brightness synchrotron X-ray techniques and modern computational biophysics. I combine structural biology workflows—such as macromolecular crystallography and automated beamline processes—with computational molecular modeling (hybrid QM/MM calculations, molecular dynamics, and electronic structure simulations).
+            </p>
+            <p>
+              Beyond the wet lab and beamline floor, I develop reproducible scientific software, data analysis scripts, and automation pipelines in Python and Fortran to facilitate rigorous, open science.
+            </p>
+          </div>
+
+          <div class="info-box">
+            <h3 class="info-box-title">Overview</h3>
+            <ul class="info-list">
+              <li class="info-item">
+                <span class="info-label">Affiliation</span>
+                <span class="info-value">ESRF &bull; JSBG</span>
+              </li>
+              <li class="info-item">
+                <span class="info-label">Location</span>
+                <span class="info-value">Grenoble, France</span>
+              </li>
+              <li class="info-item">
+                <span class="info-label">Core Focus</span>
+                <span class="info-value">Structural Biology &amp; QM/MM</span>
+              </li>
+              <li class="info-item">
+                <span class="info-label">Languages</span>
+                <span class="info-value">Python, Fortran, C++</span>
+              </li>
+              <li class="info-item">
+                <span class="info-label">GitHub</span>
+                <span class="info-value"><a href="https://github.com/MatteoMagri" target="_blank" rel="noopener noreferrer">@MatteoMagri</a></span>
+              </li>
+              <li class="info-item">
+                <span class="info-label">ORCID</span>
+                <span class="info-value"><a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer">0009-0004-0390-3800</a></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Research Focus -->
+    <section id="research">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Scientific Pillars</div>
+          <h2 class="section-title">Research &amp; Focus Areas</h2>
+          <p class="section-desc">
+            Combining state-of-the-art synchrotron instrumentation with theoretical and computational frameworks.
+          </p>
+        </div>
+
+        <div class="grid-3">
+          <!-- Pillar 1 -->
+          <div class="card">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="4"></circle>
+                <line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line>
+                <line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line>
+                <line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line>
+                <line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line>
+              </svg>
+            </div>
+            <h3 class="card-title">Synchrotron Structural Biology</h3>
+            <p class="card-desc">
+              Macromolecular crystallography, automated sample screening, X-ray diffraction, and beamline operations tailored for structural determination of complex biological systems.
+            </p>
+            <div class="card-tags">
+              <span class="tag">MX</span>
+              <span class="tag">Crystallography</span>
+              <span class="tag">ESRF</span>
+            </div>
+          </div>
+
+          <!-- Pillar 2 -->
+          <div class="card">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+            </div>
+            <h3 class="card-title">QM/MM &amp; Molecular Dynamics</h3>
+            <p class="card-desc">
+              Quantum mechanical / molecular mechanics simulations, DFT electronic calculations, force field parametrization, and trajectory analysis of enzymatic reaction mechanisms.
+            </p>
+            <div class="card-tags">
+              <span class="tag">QM/MM</span>
+              <span class="tag">DFT</span>
+              <span class="tag">Molecular Dynamics</span>
+            </div>
+          </div>
+
+          <!-- Pillar 3 -->
+          <div class="card">
+            <div class="card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+            </div>
+            <h3 class="card-title">Scientific Computing &amp; Tools</h3>
+            <p class="card-desc">
+              Building lightweight, reproducible Python libraries, computational pipelines, structural batch processors, and automated workflows for scientific research.
+            </p>
+            <div class="card-tags">
+              <span class="tag">Python</span>
+              <span class="tag">Pipelines</span>
+              <span class="tag">HPC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section id="projects">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Open Source &amp; Code</div>
+          <h2 class="section-title">Selected Projects</h2>
+          <p class="section-desc">
+            Open-source software, datasets, and utilities hosted on GitHub.
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <!-- Project 1 -->
+          <div class="card">
+            <div class="repo-header">
+              <a href="https://github.com/MatteoMagri/Xtals" target="_blank" rel="noopener noreferrer" class="repo-name">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Xtals
+              </a>
+              <span class="tag">Repository</span>
+            </div>
+            <p class="card-desc">
+              Curated repository and image records of macromolecular crystals, crystallization outcomes, and photographic observations for crystallography studies.
+            </p>
+            <div class="card-tags">
+              <span class="tag">Crystallography</span>
+              <span class="tag">Imaging</span>
+              <span class="tag">Structural Data</span>
+            </div>
+          </div>
+
+          <!-- Project 2 -->
+          <div class="card">
+            <div class="repo-header">
+              <a href="https://github.com/MatteoMagri/pHcalc" target="_blank" rel="noopener noreferrer" class="repo-name">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                pHcalc
+              </a>
+              <span class="tag">Python</span>
+            </div>
+            <p class="card-desc">
+              Systematic pH calculation package for Python. Resolves exact equilibrium concentrations and pH in arbitrary acid/base/salt mixture systems.
+            </p>
+            <div class="card-tags">
+              <span class="tag">Python</span>
+              <span class="tag">Equilibrium</span>
+              <span class="tag">Physical Chemistry</span>
+            </div>
+          </div>
+
+          <!-- Project 3 -->
+          <div class="card">
+            <div class="repo-header">
+              <a href="https://github.com/MatteoMagri/Mandelpy" target="_blank" rel="noopener noreferrer" class="repo-name">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Mandelpy
+              </a>
+              <span class="tag">Python</span>
+            </div>
+            <p class="card-desc">
+              Fast, intuitive Mandelbrot set rendering and numerical fractal exploration library written in Python.
+            </p>
+            <div class="card-tags">
+              <span class="tag">Python</span>
+              <span class="tag">Fractals</span>
+              <span class="tag">Numerical Computing</span>
+            </div>
+          </div>
+
+          <!-- Project 4 -->
+          <div class="card">
+            <div class="repo-header">
+              <a href="https://github.com/MatteoMagri/PDB" target="_blank" rel="noopener noreferrer" class="repo-name">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                PDB Pipelines
+              </a>
+              <span class="tag">Tooling</span>
+            </div>
+            <p class="card-desc">
+              Tools, test sets, and scripts for working with macromolecular PDB files, structural validation, coordinate transformations, and data preprocessing.
+            </p>
+            <div class="card-tags">
+              <span class="tag">PDB</span>
+              <span class="tag">Structures</span>
+              <span class="tag">Bioinformatics</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Connect & Contact Section -->
+    <section id="connect">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Profiles &amp; Contact</div>
+          <h2 class="section-title">Get in Touch</h2>
+          <p class="section-desc">
+            Feel free to connect for scientific discussions, synchrotron research, or collaboration.
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <!-- ORCID Card -->
+          <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="connect-card">
+            <div class="connect-left">
+              <div class="connect-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zM7.369 4.378c.525 0 .947.431.947.947s-.422.947-.947.947a.95.95 0 0 1-.947-.947c0-.516.422-.947.947-.947zm-.722 3.038h1.444v10.957H6.647V7.416zm3.562 0h3.9c3.712 0 5.344 2.653 5.344 5.478 0 2.897-2.016 5.479-5.316 5.479h-3.928V7.416zm1.444 1.406v8.145h2.3c2.472 0 3.9-1.594 3.9-4.072 0-2.306-1.303-4.073-3.825-4.073h-2.375z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="connect-title">ORCID</div>
+                <div class="connect-subtitle">0009-0004-0390-3800</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
+
+          <!-- GitHub Card -->
+          <a href="https://github.com/MatteoMagri" target="_blank" rel="noopener noreferrer" class="connect-card">
+            <div class="connect-left">
+              <div class="connect-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="connect-title">GitHub</div>
+                <div class="connect-subtitle">@MatteoMagri</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
+
+          <!-- LinkedIn Card -->
+          <a href="https://it.linkedin.com/in/matteo-magri-162357272" target="_blank" rel="noopener noreferrer" class="connect-card">
+            <div class="connect-left">
+              <div class="connect-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0-.01-3.34 1.67 1.67 0 0 0 .01 3.34M7.85 18.5V10.1H5.06v8.4h2.79z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="connect-title">LinkedIn</div>
+                <div class="connect-subtitle">matteo-magri</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
+
+          <!-- ESRF Card -->
+          <a href="https://www.esrf.fr" target="_blank" rel="noopener noreferrer" class="connect-card">
+            <div class="connect-left">
+              <div class="connect-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+              <div>
+                <div class="connect-title">ESRF Facility</div>
+                <div class="connect-subtitle">Joint Structural Biology Group</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
+        </div>
+
+        <!-- Copy Email Box -->
+        <div class="email-box">
+          <div class="email-info">
+            <span class="email-label">Direct Inquiries</span>
+            <span class="email-address">magri@esrf.fr</span>
+          </div>
+          <div style="display: flex; gap: 0.75rem;">
+            <button id="copy-email-btn" data-email="magri@esrf.fr" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy Email
+            </button>
+            <a href="mailto:magri@esrf.fr" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Send Message
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-content">
+      <div>
+        &copy; 2026 Matteo Magri &bull; Published via <a href="https://pages.github.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub Pages</a> (<a href="https://magri.me" style="color: inherit;">magri.me</a>)
+      </div>
+      <ul class="footer-links">
+        <li><a href="#home" class="footer-link">Top</a></li>
+        <li><a href="https://github.com/MatteoMagri/home" target="_blank" rel="noopener noreferrer" class="footer-link">Source</a></li>
+        <li><a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="footer-link">ORCID</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="main.js"></script>
+</body>
+</html>
