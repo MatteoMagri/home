@@ -259,19 +259,25 @@
     let time = 0.0;
 
     let currentNoiseAmount = 0.10;
-    let spectralAlpha = 1.0; // 1.0: all 6 equal contribution, 0.0: only 1st beam has all intensity
+    const TOTAL_SPECTRAL_STEPS = 50; // 50 fine-grained steps overall
+    let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
     let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
+    function getSpectralAlpha() {
+      const u = spectralStep / TOTAL_SPECTRAL_STEPS;
+      // Non-linear power curve (u^2.4) heavily clusters steps in low values
+      return Math.pow(u, 2.4);
+    }
+
     function applySpectralDistribution() {
-      // Beam 1 maintains full intensity; beams 2..6 smoothly scale with spectralAlpha
-      // Going up (alpha -> 1.0): all 6 beams contribute equally
-      // Going down (alpha -> 0.0): only the 1st beam has all the intensity
+      // Non-linear alpha: 0.0 = only 1st beam, 1.0 = all 6 contribute equally
+      const alpha = getSpectralAlpha();
       const w1 = baseAmps[0];
-      const w2 = baseAmps[1] * spectralAlpha;
-      const w3 = baseAmps[2] * spectralAlpha;
-      const w4 = baseAmps[3] * spectralAlpha;
-      const w5 = baseAmps[4] * spectralAlpha;
-      const w6 = baseAmps[5] * spectralAlpha;
+      const w2 = baseAmps[1] * alpha;
+      const w3 = baseAmps[2] * alpha;
+      const w4 = baseAmps[3] * alpha;
+      const w5 = baseAmps[4] * alpha;
+      const w6 = baseAmps[5] * alpha;
 
       gl.uniform3f(uLocs.ampsA, w1, w2, w3);
       gl.uniform3f(uLocs.ampsB, w4, w5, w6);
@@ -279,7 +285,7 @@
       // Dynamically re-normalize vmaxAmp so dynamic range and contrast remain vibrant
       if (window.BEAM_DATA) {
         const baseVmax = window.BEAM_DATA.vmax_amp;
-        const effVmax = baseVmax * (0.22 + 0.78 * spectralAlpha);
+        const effVmax = baseVmax * (0.22 + 0.78 * alpha);
         gl.uniform1f(uLocs.vmaxAmp, effVmax);
       }
     }
@@ -391,14 +397,14 @@
 
     window.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.code === "ArrowUp") {
-        // Ctrl+ArrowUp: increase contribution of other 5 wavelengths -> all 6 contribute equally
+        // Ctrl+ArrowUp: step up non-linear curve (50 steps) -> towards all 6 equal
         e.preventDefault();
-        spectralAlpha = Math.min(1.0, spectralAlpha + 0.10);
+        spectralStep = Math.min(TOTAL_SPECTRAL_STEPS, spectralStep + 1);
         applySpectralDistribution();
       } else if (e.ctrlKey && e.code === "ArrowDown") {
-        // Ctrl+ArrowDown: decrease contribution of other wavelengths -> only the 1st has all intensity
+        // Ctrl+ArrowDown: step down non-linear curve -> dense points in low values towards only 1st
         e.preventDefault();
-        spectralAlpha = Math.max(0.0, spectralAlpha - 0.10);
+        spectralStep = Math.max(0, spectralStep - 1);
         applySpectralDistribution();
       } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
