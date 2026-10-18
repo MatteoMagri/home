@@ -2,493 +2,392 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Matteo Magri | Scientist & Researcher</title>
-  <meta name="description" content="Personal website of Matteo Magri. Scientist in Structural Biology, Synchrotron Science, and Computational Biophysics at ESRF.">
-  <link rel="canonical" href="https://magri.me/">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="Matteo Magri | Scientist & Researcher">
-  <meta property="og:description" content="Structural biology, synchrotron instrumentation, and computational biophysics at ESRF.">
-  <meta property="og:url" content="https://magri.me/">
-  <meta property="og:type" content="website">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Magri</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
+  <canvas id="glCanvas"></canvas>
 
-  <!-- Header -->
-  <header>
-    <div class="nav-container">
-      <a href="#home" class="brand">
-        <svg class="brand-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="64" height="64" rx="14" fill="#0f172a" />
-          <path d="M16 46 V18 L26 34 L32 24 L38 34 L48 18 V46" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="32" cy="24" r="3" fill="#38bdf8" />
-        </svg>
-        <span>Matteo<span class="brand-accent">Magri</span></span>
-      </a>
+  <script src="beam_data.js"></script>
+  <script>
+    const vsSource = `#version 300 es
+    in vec2 a_pos;
+    out vec2 v_uv;
+    void main() {
+      v_uv = (a_pos + 1.0) * 0.5;
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+    }`;
 
-      <ul class="nav-links" id="nav-links">
-        <li><a href="#about" class="nav-link">About</a></li>
-        <li><a href="#research" class="nav-link">Research</a></li>
-        <li><a href="#projects" class="nav-link">Projects</a></li>
-        <li><a href="#connect" class="nav-link">Connect</a></li>
-      </ul>
+    const fsSource = `#version 300 es
+    precision highp float;
 
-      <div class="nav-actions">
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-          <span id="theme-icon">
-            <!-- Set by JavaScript -->
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </span>
-        </button>
-        <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">☰</button>
-      </div>
-    </div>
-  </header>
+    uniform sampler2D u_tex0;
+    uniform sampler2D u_tex1;
+    uniform sampler2D u_tex2;
+    uniform float u_time;
+    uniform float u_maxVal;
+    uniform float u_vmaxAmp;
+    uniform float u_aspect;
 
-  <main>
-    <!-- Hero Section -->
-    <section class="hero" id="home">
-      <div class="container hero-grid">
-        <div>
-          <div class="hero-pill">
-            <span class="dot"></span>
-            <span>Scientist &bull; Structural Biology &bull; ESRF</span>
-          </div>
+    // Random parameters randomized each time page loads
+    uniform mat2 u_rot;        // Random 2D spatial rotation
+    uniform vec2 u_offset;     // Random center translation
+    uniform vec3 u_phasesA;    // Random relative phases for beams 1, 2, 3
+    uniform vec3 u_phasesB;    // Random relative phases for beams 4, 5, 6
+    uniform vec3 u_ampsA;      // Random amplitude weights for beams 1, 2, 3
+    uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
+    uniform vec2 u_noiseSeed;   // Random noise seed per session
+    uniform float u_noiseAmount;// Static noise strength (e.g. 0.045)
 
-          <h1 class="hero-title">Matteo Magri</h1>
+    in vec2 v_uv;
+    out vec4 fragColor;
 
-          <p class="hero-subtitle">
-            Structural Biology, Synchrotron Science &amp; Computational Biophysics
-          </p>
+    const float TWO_PI = 6.283185307179586;
 
-          <div class="hero-meta">
-            <span class="meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
-              ESRF &bull; Joint Structural Biology Group
-            </span>
-            <span class="meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              Grenoble, France
-            </span>
-            <span class="meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
-              <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">ORCID: 0009-0004-0390-3800</a>
-            </span>
-          </div>
+    // Static high-frequency pseudo-random hash generator
+    float static_hash(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
 
-          <p class="hero-desc">
-            Investigating macromolecular architecture and dynamics at the intersection of European synchrotron facilities and computational simulation. Focused on beamline experimentation, quantum mechanics/molecular mechanics (QM/MM), and open-source scientific software.
-          </p>
+    float get_static_noise(vec2 coord, vec2 seed) {
+      // Crisp pixel-level grain
+      float n1 = static_hash(coord + seed);
+      // Soft 2x2 cluster sensor grain
+      float n2 = static_hash(floor(coord * 0.5) + seed * 1.618);
+      return (n1 * 0.65 + n2 * 0.35) - 0.5;
+    }
 
-          <div class="hero-cta">
-            <a href="#projects" class="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="16 18 22 12 16 6"></polyline>
-                <polyline points="8 6 2 12 8 18"></polyline>
-              </svg>
-              View Projects
-            </a>
-            <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-              </svg>
-              ORCID Profile
-            </a>
-            <a href="#connect" class="btn btn-outline">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              Contact
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
+    // Inferno colormap (sampled from matplotlib)
+    vec3 colormap_inferno(float t) {
+      t = clamp(t, 0.0, 1.0);
+      const vec3 c[9] = vec3[9](
+        vec3(0.0015, 0.0005, 0.0139),
+        vec3(0.1293, 0.0473, 0.2908),
+        vec3(0.3415, 0.0623, 0.4294),
+        vec3(0.5409, 0.1347, 0.4151),
+        vec3(0.7357, 0.2159, 0.3302),
+        vec3(0.8943, 0.3534, 0.1936),
+        vec3(0.9784, 0.5579, 0.0349),
+        vec3(0.9746, 0.7977, 0.2063),
+        vec3(0.9884, 0.9984, 0.6449)
+      );
+      float i = t * 8.0;
+      int idx = int(floor(i));
+      float f = fract(i);
+      if (idx >= 8) return c[8];
+      return mix(c[idx], c[idx + 1], f);
+    }
 
-    <!-- About Section -->
-    <section id="about">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-label">Background</div>
-          <h2 class="section-title">About Me</h2>
-        </div>
+    vec2 decode(vec2 raw) {
+      return (raw * 255.0 - 128.0) / 127.0 * u_maxVal;
+    }
 
-        <div class="about-grid">
-          <div class="about-text">
-            <p>
-              I am a scientist based at the <strong>European Synchrotron Radiation Facility (ESRF)</strong> in Grenoble, France, actively engaged with the <strong>Joint Structural Biology Group (JSBG)</strong>.
-            </p>
-            <p>
-              My research lies at the nexus of high-brightness synchrotron X-ray techniques and modern computational biophysics. I combine structural biology workflows—such as macromolecular crystallography and automated beamline processes—with computational molecular modeling (hybrid QM/MM calculations, molecular dynamics, and electronic structure simulations).
-            </p>
-            <p>
-              Beyond the wet lab and beamline floor, I develop reproducible scientific software, data analysis scripts, and automation pipelines in Python and Fortran to facilitate rigorous, open science.
-            </p>
-          </div>
+    vec2 rotate_phasor(vec2 z, float tau) {
+      float c = cos(-tau);
+      float s = sin(-tau);
+      return vec2(z.x * c - z.y * s, z.x * s + z.y * c);
+    }
 
-          <div class="info-box">
-            <h3 class="info-box-title">Overview</h3>
-            <ul class="info-list">
-              <li class="info-item">
-                <span class="info-label">Affiliation</span>
-                <span class="info-value">ESRF &bull; JSBG</span>
-              </li>
-              <li class="info-item">
-                <span class="info-label">Location</span>
-                <span class="info-value">Grenoble, France</span>
-              </li>
-              <li class="info-item">
-                <span class="info-label">Core Focus</span>
-                <span class="info-value">Structural Biology &amp; QM/MM</span>
-              </li>
-              <li class="info-item">
-                <span class="info-label">Languages</span>
-                <span class="info-value">Python, Fortran, C++</span>
-              </li>
-              <li class="info-item">
-                <span class="info-label">GitHub</span>
-                <span class="info-value"><a href="https://github.com/MatteoMagri" target="_blank" rel="noopener noreferrer">@MatteoMagri</a></span>
-              </li>
-              <li class="info-item">
-                <span class="info-label">ORCID</span>
-                <span class="info-value"><a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer">0009-0004-0390-3800</a></span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
+    void main() {
+      // Cover-mode crop: preserves 1:1 aspect ratio across display
+      vec2 p = v_uv - 0.5;
+      vec2 sim_p;
+      if (u_aspect > 1.0) {
+        sim_p = vec2(p.x, p.y / u_aspect);
+      } else {
+        sim_p = vec2(p.x * u_aspect, p.y);
+      }
 
-    <!-- Research Focus -->
-    <section id="research">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-label">Scientific Pillars</div>
-          <h2 class="section-title">Research &amp; Focus Areas</h2>
-          <p class="section-desc">
-            Combining state-of-the-art synchrotron instrumentation with theoretical and computational frameworks.
-          </p>
-        </div>
+      // Zoom factor 0.65 ensures that any rotation angle at any screen aspect ratio
+      // remains strictly inscribed within the valid circular beam wavefield
+      vec2 rotated_p = u_rot * (sim_p * 0.65) + u_offset;
+      vec2 sim_uv = rotated_p + 0.5;
 
-        <div class="grid-3">
-          <!-- Pillar 1 -->
-          <div class="card">
-            <div class="card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <circle cx="12" cy="12" r="4"></circle>
-                <line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line>
-                <line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line>
-                <line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line>
-                <line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line>
-              </svg>
-            </div>
-            <h3 class="card-title">Synchrotron Structural Biology</h3>
-            <p class="card-desc">
-              Macromolecular crystallography, automated sample screening, X-ray diffraction, and beamline operations tailored for structural determination of complex biological systems.
-            </p>
-            <div class="card-tags">
-              <span class="tag">MX</span>
-              <span class="tag">Crystallography</span>
-              <span class="tag">ESRF</span>
-            </div>
-          </div>
+      // Smooth edge taper to completely prevent any boundary clamping / straight-line streaks
+      vec2 borderDist = min(sim_uv, 1.0 - sim_uv);
+      float edgeMask = smoothstep(0.0, 0.05, min(borderDist.x, borderDist.y));
 
-          <!-- Pillar 2 -->
-          <div class="card">
-            <div class="card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
-            </div>
-            <h3 class="card-title">QM/MM &amp; Molecular Dynamics</h3>
-            <p class="card-desc">
-              Quantum mechanical / molecular mechanics simulations, DFT electronic calculations, force field parametrization, and trajectory analysis of enzymatic reaction mechanisms.
-            </p>
-            <div class="card-tags">
-              <span class="tag">QM/MM</span>
-              <span class="tag">DFT</span>
-              <span class="tag">Molecular Dynamics</span>
-            </div>
-          </div>
+      vec2 clamped_uv = clamp(sim_uv, 0.0, 1.0);
 
-          <!-- Pillar 3 -->
-          <div class="card">
-            <div class="card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 17 10 11 4 5"></polyline>
-                <line x1="12" y1="19" x2="20" y2="19"></line>
-              </svg>
-            </div>
-            <h3 class="card-title">Scientific Computing &amp; Tools</h3>
-            <p class="card-desc">
-              Building lightweight, reproducible Python libraries, computational pipelines, structural batch processors, and automated workflows for scientific research.
-            </p>
-            <div class="card-tags">
-              <span class="tag">Python</span>
-              <span class="tag">Pipelines</span>
-              <span class="tag">HPC</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      vec4 r0 = texture(u_tex0, clamped_uv);
+      vec4 r1 = texture(u_tex1, clamped_uv);
+      vec4 r2 = texture(u_tex2, clamped_uv);
 
-    <!-- Projects Section -->
-    <section id="projects">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-label">Open Source &amp; Code</div>
-          <h2 class="section-title">Selected Projects</h2>
-          <p class="section-desc">
-            Open-source software, datasets, and utilities hosted on GitHub.
-          </p>
-        </div>
+      vec2 z1 = decode(r0.xy);
+      vec2 z2 = decode(r0.zw);
+      vec2 z3 = decode(r1.xy);
+      vec2 z4 = decode(r1.zw);
+      vec2 z5 = decode(r2.xy);
+      vec2 z6 = decode(r2.zw);
 
-        <div class="grid-2">
-          <!-- Project 1 -->
-          <div class="card">
-            <div class="repo-header">
-              <a href="https://github.com/MatteoMagri/Xtals" target="_blank" rel="noopener noreferrer" class="repo-name">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                Xtals
-              </a>
-              <span class="tag">Repository</span>
-            </div>
-            <p class="card-desc">
-              Curated repository and image records of macromolecular crystals, crystallization outcomes, and photographic observations for crystallography studies.
-            </p>
-            <div class="card-tags">
-              <span class="tag">Crystallography</span>
-              <span class="tag">Imaging</span>
-              <span class="tag">Structural Data</span>
-            </div>
-          </div>
+      // Superposition with 10-cycle beat loop [10, 11, 12, 13, 14, 15] + random phases & weights
+      vec2 psi = vec2(0.0);
+      psi += u_ampsA.x * rotate_phasor(z1, TWO_PI * 10.0 * u_time + u_phasesA.x);
+      psi += u_ampsA.y * rotate_phasor(z2, TWO_PI * 11.0 * u_time + u_phasesA.y);
+      psi += u_ampsA.z * rotate_phasor(z3, TWO_PI * 12.0 * u_time + u_phasesA.z);
+      psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 13.0 * u_time + u_phasesB.x);
+      psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 14.0 * u_time + u_phasesB.y);
+      psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
 
-          <!-- Project 2 -->
-          <div class="card">
-            <div class="repo-header">
-              <a href="https://github.com/MatteoMagri/pHcalc" target="_blank" rel="noopener noreferrer" class="repo-name">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                pHcalc
-              </a>
-              <span class="tag">Python</span>
-            </div>
-            <p class="card-desc">
-              Systematic pH calculation package for Python. Resolves exact equilibrium concentrations and pH in arbitrary acid/base/salt mixture systems.
-            </p>
-            <div class="card-tags">
-              <span class="tag">Python</span>
-              <span class="tag">Equilibrium</span>
-              <span class="tag">Physical Chemistry</span>
-            </div>
-          </div>
+      // Multi-scale static noise grain based on screen pixel coordinates + session seed
+      float grain = get_static_noise(gl_FragCoord.xy, u_noiseSeed);
 
-          <!-- Project 3 -->
-          <div class="card">
-            <div class="repo-header">
-              <a href="https://github.com/MatteoMagri/Mandelpy" target="_blank" rel="noopener noreferrer" class="repo-name">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                Mandelpy
-              </a>
-              <span class="tag">Python</span>
-            </div>
-            <p class="card-desc">
-              Fast, intuitive Mandelbrot set rendering and numerical fractal exploration library written in Python.
-            </p>
-            <div class="card-tags">
-              <span class="tag">Python</span>
-              <span class="tag">Fractals</span>
-              <span class="tag">Numerical Computing</span>
-            </div>
-          </div>
+      // Pronounced noise on field amplitude to emulate detector shot & spatial speckle noise
+      float amp = max(0.0, length(psi) + grain * (u_noiseAmount * 0.22 * u_vmaxAmp)) * edgeMask;
 
-          <!-- Project 4 -->
-          <div class="card">
-            <div class="repo-header">
-              <a href="https://github.com/MatteoMagri/PDB" target="_blank" rel="noopener noreferrer" class="repo-name">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                PDB Pipelines
-              </a>
-              <span class="tag">Tooling</span>
-            </div>
-            <p class="card-desc">
-              Tools, test sets, and scripts for working with macromolecular PDB files, structural validation, coordinate transformations, and data preprocessing.
-            </p>
-            <div class="card-tags">
-              <span class="tag">PDB</span>
-              <span class="tag">Structures</span>
-              <span class="tag">Bioinformatics</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      vec3 color = colormap_inferno(amp / u_vmaxAmp);
 
-    <!-- Connect & Contact Section -->
-    <section id="connect">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-label">Profiles &amp; Contact</div>
-          <h2 class="section-title">Get in Touch</h2>
-          <p class="section-desc">
-            Feel free to connect for scientific discussions, synchrotron research, or collaboration.
-          </p>
-        </div>
+      // Pronounced photometric static film grain overlay
+      color += grain * (u_noiseAmount * 1.35);
+      color = clamp(color * edgeMask, 0.0, 1.0);
 
-        <div class="grid-2">
-          <!-- ORCID Card -->
-          <a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="connect-card">
-            <div class="connect-left">
-              <div class="connect-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zM7.369 4.378c.525 0 .947.431.947.947s-.422.947-.947.947a.95.95 0 0 1-.947-.947c0-.516.422-.947.947-.947zm-.722 3.038h1.444v10.957H6.647V7.416zm3.562 0h3.9c3.712 0 5.344 2.653 5.344 5.478 0 2.897-2.016 5.479-5.316 5.479h-3.928V7.416zm1.444 1.406v8.145h2.3c2.472 0 3.9-1.594 3.9-4.072 0-2.306-1.303-4.073-3.825-4.073h-2.375z"/>
-                </svg>
-              </div>
-              <div>
-                <div class="connect-title">ORCID</div>
-                <div class="connect-subtitle">0009-0004-0390-3800</div>
-              </div>
-            </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="7" y1="17" x2="17" y2="7"></line>
-              <polyline points="7 7 17 7 17 17"></polyline>
-            </svg>
-          </a>
+      fragColor = vec4(color, 1.0);
+    }
+    `;
 
-          <!-- GitHub Card -->
-          <a href="https://github.com/MatteoMagri" target="_blank" rel="noopener noreferrer" class="connect-card">
-            <div class="connect-left">
-              <div class="connect-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-                </svg>
-              </div>
-              <div>
-                <div class="connect-title">GitHub</div>
-                <div class="connect-subtitle">@MatteoMagri</div>
-              </div>
-            </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="7" y1="17" x2="17" y2="7"></line>
-              <polyline points="7 7 17 7 17 17"></polyline>
-            </svg>
-          </a>
+    const canvas = document.getElementById("glCanvas");
+    const gl = canvas.getContext("webgl2", { antialias: false, preserveDrawingBuffer: false, powerPreference: "high-performance" });
 
-          <!-- LinkedIn Card -->
-          <a href="https://it.linkedin.com/in/matteo-magri-162357272" target="_blank" rel="noopener noreferrer" class="connect-card">
-            <div class="connect-left">
-              <div class="connect-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0-.01-3.34 1.67 1.67 0 0 0 .01 3.34M7.85 18.5V10.1H5.06v8.4h2.79z"/>
-                </svg>
-              </div>
-              <div>
-                <div class="connect-title">LinkedIn</div>
-                <div class="connect-subtitle">matteo-magri</div>
-              </div>
-            </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="7" y1="17" x2="17" y2="7"></line>
-              <polyline points="7 7 17 7 17 17"></polyline>
-            </svg>
-          </a>
+    function compileShader(src, type) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, src);
+      gl.compileShader(shader);
+      return shader;
+    }
 
-          <!-- ESRF Card -->
-          <a href="https://www.esrf.fr" target="_blank" rel="noopener noreferrer" class="connect-card">
-            <div class="connect-left">
-              <div class="connect-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-              </div>
-              <div>
-                <div class="connect-title">ESRF Facility</div>
-                <div class="connect-subtitle">Joint Structural Biology Group</div>
-              </div>
-            </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="7" y1="17" x2="17" y2="7"></line>
-              <polyline points="7 7 17 7 17 17"></polyline>
-            </svg>
-          </a>
-        </div>
+    const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+    const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    gl.useProgram(program);
 
-        <!-- Copy Email Box -->
-        <div class="email-box">
-          <div class="email-info">
-            <span class="email-label">Direct Inquiries</span>
-            <span class="email-address">magri@esrf.fr</span>
-          </div>
-          <div style="display: flex; gap: 0.75rem;">
-            <button id="copy-email-btn" data-email="magri@esrf.fr" class="btn btn-outline">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy Email
-            </button>
-            <a href="mailto:magri@esrf.fr" class="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              Send Message
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+    const quadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1,
+    ]), gl.STATIC_DRAW);
 
-  <!-- Footer -->
-  <footer>
-    <div class="container footer-content">
-      <div>
-        &copy; 2026 Matteo Magri &bull; Published via <a href="https://pages.github.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub Pages</a> (<a href="https://magri.me" style="color: inherit;">magri.me</a>)
-      </div>
-      <ul class="footer-links">
-        <li><a href="#home" class="footer-link">Top</a></li>
-        <li><a href="https://github.com/MatteoMagri/home" target="_blank" rel="noopener noreferrer" class="footer-link">Source</a></li>
-        <li><a href="https://orcid.org/0009-0004-0390-3800" target="_blank" rel="noopener noreferrer" class="footer-link">ORCID</a></li>
-      </ul>
-    </div>
-  </footer>
+    const aPos = gl.getAttribLocation(program, "a_pos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-  <!-- Scripts -->
-  <script src="main.js"></script>
+    const uLocs = {
+      tex0: gl.getUniformLocation(program, "u_tex0"),
+      tex1: gl.getUniformLocation(program, "u_tex1"),
+      tex2: gl.getUniformLocation(program, "u_tex2"),
+      time: gl.getUniformLocation(program, "u_time"),
+      maxVal: gl.getUniformLocation(program, "u_maxVal"),
+      vmaxAmp: gl.getUniformLocation(program, "u_vmaxAmp"),
+      aspect: gl.getUniformLocation(program, "u_aspect"),
+      rot: gl.getUniformLocation(program, "u_rot"),
+      offset: gl.getUniformLocation(program, "u_offset"),
+      phasesA: gl.getUniformLocation(program, "u_phasesA"),
+      phasesB: gl.getUniformLocation(program, "u_phasesB"),
+      ampsA: gl.getUniformLocation(program, "u_ampsA"),
+      ampsB: gl.getUniformLocation(program, "u_ampsB"),
+      noiseSeed: gl.getUniformLocation(program, "u_noiseSeed"),
+      noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
+    };
+
+    gl.uniform1i(uLocs.tex0, 0);
+    gl.uniform1i(uLocs.tex1, 1);
+    gl.uniform1i(uLocs.tex2, 2);
+
+    function createTexture(unit) {
+      const tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      return tex;
+    }
+
+    createTexture(0);
+    createTexture(1);
+    createTexture(2);
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+
+    // --- Randomization Engine ---
+    let loopPeriodSec = 10.0;
+    let lastTimestamp = performance.now();
+    let time = 0.0;
+
+    let currentNoiseAmount = 0.10;
+
+    function randomizeParameters() {
+      // 1. Random 2D spatial rotation angle
+      const theta = Math.random() * Math.PI * 2.0;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      gl.uniformMatrix2fv(uLocs.rot, false, new Float32Array([cosT, sinT, -sinT, cosT]));
+
+      // 2. Random slight spatial center translation within beam core
+      const ox = (Math.random() - 0.5) * 0.08;
+      const oy = (Math.random() - 0.5) * 0.08;
+      gl.uniform2f(uLocs.offset, ox, oy);
+
+      // 3. Random phase shifts for all 6 wavelengths in [0, 2pi)
+      const p1 = Math.random() * Math.PI * 2.0;
+      const p2 = Math.random() * Math.PI * 2.0;
+      const p3 = Math.random() * Math.PI * 2.0;
+      const p4 = Math.random() * Math.PI * 2.0;
+      const p5 = Math.random() * Math.PI * 2.0;
+      const p6 = Math.random() * Math.PI * 2.0;
+      gl.uniform3f(uLocs.phasesA, p1, p2, p3);
+      gl.uniform3f(uLocs.phasesB, p4, p5, p6);
+
+      // 4. Random relative amplitude weights in [0.75, 1.25]
+      const a1 = 0.75 + Math.random() * 0.5;
+      const a2 = 0.75 + Math.random() * 0.5;
+      const a3 = 0.75 + Math.random() * 0.5;
+      const a4 = 0.75 + Math.random() * 0.5;
+      const a5 = 0.75 + Math.random() * 0.5;
+      const a6 = 0.75 + Math.random() * 0.5;
+      gl.uniform3f(uLocs.ampsA, a1, a2, a3);
+      gl.uniform3f(uLocs.ampsB, a4, a5, a6);
+
+      // 5. Random loop starting phase and random speed variation (8s to 12s per loop)
+      time = Math.random();
+      loopPeriodSec = 8.0 + Math.random() * 4.0;
+
+      // 6. Random static noise session seed
+      const nSeedX = Math.random() * 5000.0;
+      const nSeedY = Math.random() * 5000.0;
+      gl.uniform2f(uLocs.noiseSeed, nSeedX, nSeedY);
+      gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+    }
+
+    function render(timestamp) {
+      const dt = (timestamp - lastTimestamp) / 1000.0;
+      lastTimestamp = timestamp;
+
+      time += dt / loopPeriodSec;
+      if (time >= 1.0) time -= 1.0;
+
+      gl.uniform1f(uLocs.aspect, canvas.width / canvas.height);
+      gl.uniform1f(uLocs.time, time);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      requestAnimationFrame(render);
+    }
+
+    function start() {
+      const data = window.BEAM_DATA;
+      gl.uniform1f(uLocs.maxVal, data.max_val);
+      gl.uniform1f(uLocs.vmaxAmp, data.vmax_amp);
+
+      randomizeParameters();
+
+      function loadImage(src, unit) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            gl.activeTexture(gl.TEXTURE0 + unit);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            resolve();
+          };
+          img.src = src;
+        });
+      }
+
+      Promise.all([
+        loadImage(data.tex0_b64 || "tex0.png", 0),
+        loadImage(data.tex1_b64 || "tex1.png", 1),
+        loadImage(data.tex2_b64 || "tex2.png", 2),
+      ]).then(() => {
+        resizeCanvas();
+        requestAnimationFrame(render);
+      });
+    }
+
+    // Single click / tap generates a fresh new random wavefield; double click toggles fullscreen
+    let clickTimeout = null;
+    canvas.addEventListener("click", () => {
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+        // Double click: toggle fullscreen
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      } else {
+        clickTimeout = setTimeout(() => {
+          clickTimeout = null;
+          // Single click: generate new random parameters
+          randomizeParameters();
+        }, 250);
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "KeyN") {
+        // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
+        if (currentNoiseAmount === 0.0) currentNoiseAmount = 0.03;
+        else if (currentNoiseAmount <= 0.04) currentNoiseAmount = 0.06;
+        else if (currentNoiseAmount <= 0.07) currentNoiseAmount = 0.10;
+        else currentNoiseAmount = 0.0;
+        gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+      } else if (e.code === "ArrowUp") {
+        currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
+        gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+      } else if (e.code === "ArrowDown") {
+        currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
+        gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+      } else if (e.code === "Space") {
+        randomizeParameters();
+      }
+    });
+
+    start();
+  </script>
 </body>
 </html>
