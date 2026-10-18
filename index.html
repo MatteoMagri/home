@@ -331,7 +331,7 @@
 
     let lastNoiseUpdateTime = 0;
     let currentNoiseTime = 0.0;
-    const NOISE_INTERVAL_MS = 33.3; // Half-speed refresh (~30 FPS cadence)
+    const NOISE_INTERVAL_MS = 100.0; // 10 FPS noise refresh cadence (every 100ms)
 
     function render(timestamp) {
       const dt = (timestamp - lastTimestamp) / 1000.0;
@@ -340,7 +340,7 @@
       time += dt / loopPeriodSec;
       if (time >= 1.0) time -= 1.0;
 
-      // Update noise at half speed (every other frame at 60 FPS)
+      // Update noise at 10 FPS cadence
       if (timestamp - lastNoiseUpdateTime >= NOISE_INTERVAL_MS) {
         lastNoiseUpdateTime = timestamp;
         currentNoiseTime = Math.random() * 1000.0;
