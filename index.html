@@ -259,6 +259,30 @@
     let time = 0.0;
 
     let currentNoiseAmount = 0.10;
+    let spectralAlpha = 1.0; // 1.0: all 6 equal contribution, 0.0: only 1st beam has all intensity
+    let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+
+    function applySpectralDistribution() {
+      // Beam 1 maintains full intensity; beams 2..6 smoothly scale with spectralAlpha
+      // Going up (alpha -> 1.0): all 6 beams contribute equally
+      // Going down (alpha -> 0.0): only the 1st beam has all the intensity
+      const w1 = baseAmps[0];
+      const w2 = baseAmps[1] * spectralAlpha;
+      const w3 = baseAmps[2] * spectralAlpha;
+      const w4 = baseAmps[3] * spectralAlpha;
+      const w5 = baseAmps[4] * spectralAlpha;
+      const w6 = baseAmps[5] * spectralAlpha;
+
+      gl.uniform3f(uLocs.ampsA, w1, w2, w3);
+      gl.uniform3f(uLocs.ampsB, w4, w5, w6);
+
+      // Dynamically re-normalize vmaxAmp so dynamic range and contrast remain vibrant
+      if (window.BEAM_DATA) {
+        const baseVmax = window.BEAM_DATA.vmax_amp;
+        const effVmax = baseVmax * (0.22 + 0.78 * spectralAlpha);
+        gl.uniform1f(uLocs.vmaxAmp, effVmax);
+      }
+    }
 
     function randomizeParameters() {
       // 1. Random 2D spatial rotation angle
@@ -282,15 +306,16 @@
       gl.uniform3f(uLocs.phasesA, p1, p2, p3);
       gl.uniform3f(uLocs.phasesB, p4, p5, p6);
 
-      // 4. Random relative amplitude weights in [0.75, 1.25]
-      const a1 = 0.75 + Math.random() * 0.5;
-      const a2 = 0.75 + Math.random() * 0.5;
-      const a3 = 0.75 + Math.random() * 0.5;
-      const a4 = 0.75 + Math.random() * 0.5;
-      const a5 = 0.75 + Math.random() * 0.5;
-      const a6 = 0.75 + Math.random() * 0.5;
-      gl.uniform3f(uLocs.ampsA, a1, a2, a3);
-      gl.uniform3f(uLocs.ampsB, a4, a5, a6);
+      // 4. Random relative amplitude weights in [0.85, 1.15]
+      baseAmps = [
+        0.85 + Math.random() * 0.3,
+        0.85 + Math.random() * 0.3,
+        0.85 + Math.random() * 0.3,
+        0.85 + Math.random() * 0.3,
+        0.85 + Math.random() * 0.3,
+        0.85 + Math.random() * 0.3,
+      ];
+      applySpectralDistribution();
 
       // 5. Random loop starting phase and random speed variation (8s to 12s per loop)
       time = Math.random();
@@ -365,17 +390,27 @@
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.code === "KeyN") {
+      if (e.ctrlKey && e.code === "ArrowUp") {
+        // Ctrl+ArrowUp: increase contribution of other 5 wavelengths -> all 6 contribute equally
+        e.preventDefault();
+        spectralAlpha = Math.min(1.0, spectralAlpha + 0.10);
+        applySpectralDistribution();
+      } else if (e.ctrlKey && e.code === "ArrowDown") {
+        // Ctrl+ArrowDown: decrease contribution of other wavelengths -> only the 1st has all intensity
+        e.preventDefault();
+        spectralAlpha = Math.max(0.0, spectralAlpha - 0.10);
+        applySpectralDistribution();
+      } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
         if (currentNoiseAmount === 0.0) currentNoiseAmount = 0.03;
         else if (currentNoiseAmount <= 0.04) currentNoiseAmount = 0.06;
         else if (currentNoiseAmount <= 0.07) currentNoiseAmount = 0.10;
         else currentNoiseAmount = 0.0;
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (e.code === "ArrowUp") {
+      } else if (!e.ctrlKey && e.code === "ArrowUp") {
         currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (e.code === "ArrowDown") {
+      } else if (!e.ctrlKey && e.code === "ArrowDown") {
         currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
       } else if (e.code === "Space") {
