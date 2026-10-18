@@ -61,7 +61,6 @@
     uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
     uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
-    uniform float u_fwhmScale;  // Reciprocal space FWHM scale factor (0.5 to 2.0)
 
     in vec2 v_uv;
     out vec4 fragColor;
@@ -124,8 +123,9 @@
         sim_p = vec2(p.x * u_aspect, p.y);
       }
 
-      // Zoom factor 0.65 scaled by u_fwhmScale (reciprocal space FWHM variation)
-      vec2 rotated_p = u_rot * (sim_p * (0.65 * u_fwhmScale)) + u_offset;
+      // Zoom factor 0.65 ensures that any rotation angle at any screen aspect ratio
+      // remains strictly inscribed within the valid circular beam wavefield
+      vec2 rotated_p = u_rot * (sim_p * 0.65) + u_offset;
       vec2 sim_uv = rotated_p + 0.5;
 
       // Smooth edge taper to completely prevent any boundary clamping / straight-line streaks
@@ -219,7 +219,6 @@
       ampsB: gl.getUniformLocation(program, "u_ampsB"),
       noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
-      fwhmScale: gl.getUniformLocation(program, "u_fwhmScale"),
     };
 
     gl.uniform1i(uLocs.tex0, 0);
@@ -263,18 +262,6 @@
     const TOTAL_SPECTRAL_STEPS = 50; // 50 fine-grained steps overall
     let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
     let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-
-    let fwhmStep = 0; // range [-15, +15] (0 = base 1.0x reciprocal FWHM)
-    const MAX_FWHM_STEPS = 15;
-
-    function getFwhmScale() {
-      // Reciprocal FWHM scale factor from 2^(-1) = 0.5 to 2^(+1) = 2.0
-      return Math.pow(2.0, fwhmStep / MAX_FWHM_STEPS);
-    }
-
-    function applyFwhmScale() {
-      gl.uniform1f(uLocs.fwhmScale, getFwhmScale());
-    }
 
     function getSpectralAlpha() {
       const u = spectralStep / TOTAL_SPECTRAL_STEPS;
@@ -340,7 +327,6 @@
       time = Math.random();
       loopPeriodSec = 8.0 + Math.random() * 4.0;
       gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      applyFwhmScale();
     }
 
     let lastNoiseUpdateTime = 0;
@@ -420,17 +406,7 @@
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.altKey && e.code === "ArrowUp") {
-        // Alt+ArrowUp: increase reciprocal space FWHM (tighter beam, finer speckles)
-        e.preventDefault();
-        fwhmStep = Math.min(MAX_FWHM_STEPS, fwhmStep + 1);
-        applyFwhmScale();
-      } else if (e.altKey && e.code === "ArrowDown") {
-        // Alt+ArrowDown: decrease reciprocal space FWHM (broader beam, larger speckles)
-        e.preventDefault();
-        fwhmStep = Math.max(-MAX_FWHM_STEPS, fwhmStep - 1);
-        applyFwhmScale();
-      } else if (e.ctrlKey && e.code === "ArrowUp") {
+      if (e.ctrlKey && e.code === "ArrowUp") {
         // Ctrl+ArrowUp: step up non-linear curve (50 steps) -> towards all 6 equal
         e.preventDefault();
         spectralStep = Math.min(TOTAL_SPECTRAL_STEPS, spectralStep + 1);
@@ -447,10 +423,10 @@
         else if (currentNoiseAmount <= 0.07) currentNoiseAmount = 0.10;
         else currentNoiseAmount = 0.0;
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (!e.ctrlKey && !e.altKey && e.code === "ArrowUp") {
+      } else if (!e.ctrlKey && e.code === "ArrowUp") {
         currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (!e.ctrlKey && !e.altKey && e.code === "ArrowDown") {
+      } else if (!e.ctrlKey && e.code === "ArrowDown") {
         currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
       } else if (e.code === "Space") {
