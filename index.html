@@ -329,6 +329,10 @@
       gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
     }
 
+    let lastNoiseUpdateTime = 0;
+    let currentNoiseTime = 0.0;
+    const NOISE_INTERVAL_MS = 33.3; // Half-speed refresh (~30 FPS cadence)
+
     function render(timestamp) {
       const dt = (timestamp - lastTimestamp) / 1000.0;
       lastTimestamp = timestamp;
@@ -336,9 +340,15 @@
       time += dt / loopPeriodSec;
       if (time >= 1.0) time -= 1.0;
 
+      // Update noise at half speed (every other frame at 60 FPS)
+      if (timestamp - lastNoiseUpdateTime >= NOISE_INTERVAL_MS) {
+        lastNoiseUpdateTime = timestamp;
+        currentNoiseTime = Math.random() * 1000.0;
+      }
+
       gl.uniform1f(uLocs.aspect, canvas.width / canvas.height);
       gl.uniform1f(uLocs.time, time);
-      gl.uniform1f(uLocs.noiseTime, Math.random() * 1000.0);
+      gl.uniform1f(uLocs.noiseTime, currentNoiseTime);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
       requestAnimationFrame(render);
