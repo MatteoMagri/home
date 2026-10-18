@@ -59,26 +59,26 @@
     uniform vec3 u_phasesB;    // Random relative phases for beams 4, 5, 6
     uniform vec3 u_ampsA;      // Random amplitude weights for beams 1, 2, 3
     uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
-    uniform vec2 u_noiseSeed;   // Random noise seed per session
-    uniform float u_noiseAmount;// Static noise strength (e.g. 0.045)
+    uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
+    uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
 
     in vec2 v_uv;
     out vec4 fragColor;
 
     const float TWO_PI = 6.283185307179586;
 
-    // Static high-frequency pseudo-random hash generator
-    float static_hash(vec2 p) {
-      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-      p3 += dot(p3, p3.yzx + 33.33);
-      return fract((p3.x + p3.y) * p3.z);
-    }
+    // Multi-scale dynamic pseudo-random noise generator
+    float get_dynamic_noise(vec2 coord, float t) {
+      vec3 p1 = vec3(coord, fract(t * 137.1));
+      vec3 p3_1 = fract(p1 * 0.1031);
+      p3_1 += dot(p3_1, p3_1.yzx + 33.33);
+      float n1 = fract((p3_1.x + p3_1.y) * p3_1.z);
 
-    float get_static_noise(vec2 coord, vec2 seed) {
-      // Crisp pixel-level grain
-      float n1 = static_hash(coord + seed);
-      // Soft 2x2 cluster sensor grain
-      float n2 = static_hash(floor(coord * 0.5) + seed * 1.618);
+      vec3 p2 = vec3(floor(coord * 0.5), fract(t * 269.5));
+      vec3 p3_2 = fract(p2 * 0.1031);
+      p3_2 += dot(p3_2, p3_2.yzx + 33.33);
+      float n2 = fract((p3_2.x + p3_2.y) * p3_2.z);
+
       return (n1 * 0.65 + n2 * 0.35) - 0.5;
     }
 
@@ -154,15 +154,15 @@
       psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 14.0 * u_time + u_phasesB.y);
       psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
 
-      // Multi-scale static noise grain based on screen pixel coordinates + session seed
-      float grain = get_static_noise(gl_FragCoord.xy, u_noiseSeed);
+      // Dynamic noise grain that evolves every frame (zero-mean live static)
+      float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
 
-      // Pronounced noise on field amplitude to emulate detector shot & spatial speckle noise
+      // Dynamic fluctuation on field amplitude
       float amp = max(0.0, length(psi) + grain * (u_noiseAmount * 0.22 * u_vmaxAmp)) * edgeMask;
 
       vec3 color = colormap_inferno(amp / u_vmaxAmp);
 
-      // Pronounced photometric static film grain overlay
+      // Live dynamic photometric analog grain
       color += grain * (u_noiseAmount * 1.35);
       color = clamp(color * edgeMask, 0.0, 1.0);
 
@@ -217,7 +217,7 @@
       phasesB: gl.getUniformLocation(program, "u_phasesB"),
       ampsA: gl.getUniformLocation(program, "u_ampsA"),
       ampsB: gl.getUniformLocation(program, "u_ampsB"),
-      noiseSeed: gl.getUniformLocation(program, "u_noiseSeed"),
+      noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
     };
 
@@ -295,11 +295,6 @@
       // 5. Random loop starting phase and random speed variation (8s to 12s per loop)
       time = Math.random();
       loopPeriodSec = 8.0 + Math.random() * 4.0;
-
-      // 6. Random static noise session seed
-      const nSeedX = Math.random() * 5000.0;
-      const nSeedY = Math.random() * 5000.0;
-      gl.uniform2f(uLocs.noiseSeed, nSeedX, nSeedY);
       gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
     }
 
@@ -312,6 +307,7 @@
 
       gl.uniform1f(uLocs.aspect, canvas.width / canvas.height);
       gl.uniform1f(uLocs.time, time);
+      gl.uniform1f(uLocs.noiseTime, Math.random() * 1000.0);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
       requestAnimationFrame(render);
