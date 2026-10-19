@@ -61,14 +61,30 @@
     uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
     uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
-    uniform float u_modeLOD;    // Mode variance filter level: 0.0 (spread) to 4.2 (narrowed)
-    uniform float u_envelopeDecay; // Spatial envelope decay: 0.0 (spread) to 2.5 (narrowed)
+    uniform float u_modeLOD;    // Mode variance filter level: 0.0 (spread) to 3.5 (narrowed)
     uniform float u_modeGain;   // Energy-preserving normalization gain
+    uniform float u_modeMix;    // Mode blend: 0.0 = pure analytical TEM00, 1.0 = full multi-mode field
 
     in vec2 v_uv;
     out vec4 fragColor;
 
     const float TWO_PI = 6.283185307179586;
+
+    // Pure TEM00 fundamental mode coefficients (from normal mode expansion)
+    const vec2 c00_1 = vec2( 0.00154868, -0.00062582);
+    const vec2 c00_2 = vec2(-0.00169077, -0.00047714);
+    const vec2 c00_3 = vec2( 0.00007815, -0.00153174);
+    const vec2 c00_4 = vec2( 0.00198206,  0.00035866);
+    const vec2 c00_5 = vec2(-0.00216672, -0.00114246);
+    const vec2 c00_6 = vec2(-0.00005708,  0.00247582);
+
+    // TEM00 Gaussian waist decay factors (1 / w0_j^2 in rotated_p coordinate space)
+    const float decay_1 = 56.96;
+    const float decay_2 = 68.92;
+    const float decay_3 = 82.02;
+    const float decay_4 = 96.25;
+    const float decay_5 = 111.63;
+    const float decay_6 = 128.15;
 
     // Multi-scale dynamic pseudo-random noise generator
     float get_dynamic_noise(vec2 coord, float t) {
@@ -137,16 +153,34 @@
 
       vec2 clamped_uv = clamp(sim_uv, 0.0, 1.0);
 
+      // Sample multi-mode complex components from texture with mode LOD filtering
       vec4 r0 = textureLod(u_tex0, clamped_uv, u_modeLOD);
       vec4 r1 = textureLod(u_tex1, clamped_uv, u_modeLOD);
       vec4 r2 = textureLod(u_tex2, clamped_uv, u_modeLOD);
 
-      vec2 z1 = decode(r0.xy);
-      vec2 z2 = decode(r0.zw);
-      vec2 z3 = decode(r1.xy);
-      vec2 z4 = decode(r1.zw);
-      vec2 z5 = decode(r2.xy);
-      vec2 z6 = decode(r2.zw);
+      vec2 z1_tex = decode(r0.xy) * u_modeGain;
+      vec2 z2_tex = decode(r0.zw) * u_modeGain;
+      vec2 z3_tex = decode(r1.xy) * u_modeGain;
+      vec2 z4_tex = decode(r1.zw) * u_modeGain;
+      vec2 z5_tex = decode(r2.xy) * u_modeGain;
+      vec2 z6_tex = decode(r2.zw) * u_modeGain;
+
+      // Pure analytical TEM00 fundamental mode for each wavelength
+      float rad2 = dot(rotated_p, rotated_p);
+      vec2 z1_00 = c00_1 * (exp(-decay_1 * rad2) * 10.0);
+      vec2 z2_00 = c00_2 * (exp(-decay_2 * rad2) * 10.0);
+      vec2 z3_00 = c00_3 * (exp(-decay_3 * rad2) * 10.0);
+      vec2 z4_00 = c00_4 * (exp(-decay_4 * rad2) * 10.0);
+      vec2 z5_00 = c00_5 * (exp(-decay_5 * rad2) * 10.0);
+      vec2 z6_00 = c00_6 * (exp(-decay_6 * rad2) * 10.0);
+
+      // Blend smoothly: at u_modeMix = 0.0 strictly pure TEM00; at 1.0 full multi-mode
+      vec2 z1 = mix(z1_00, z1_tex, u_modeMix);
+      vec2 z2 = mix(z2_00, z2_tex, u_modeMix);
+      vec2 z3 = mix(z3_00, z3_tex, u_modeMix);
+      vec2 z4 = mix(z4_00, z4_tex, u_modeMix);
+      vec2 z5 = mix(z5_00, z5_tex, u_modeMix);
+      vec2 z6 = mix(z6_00, z6_tex, u_modeMix);
 
       // Superposition with 10-cycle beat loop [10, 11, 12, 13, 14, 15] + random phases & weights
       vec2 psi = vec2(0.0);
@@ -156,11 +190,6 @@
       psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 13.0 * u_time + u_phasesB.x);
       psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 14.0 * u_time + u_phasesB.y);
       psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
-
-      // When mode distribution variance narrows, the beam spatial envelope contracts to fundamental waist
-      float rad2 = dot(rotated_p, rotated_p);
-      float envelope = exp(-rad2 * u_envelopeDecay);
-      psi *= (envelope * u_modeGain);
 
       // Dynamic noise grain that evolves every frame (zero-mean live static)
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
@@ -234,8 +263,8 @@
       noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
       modeLOD: gl.getUniformLocation(program, "u_modeLOD"),
-      envelopeDecay: gl.getUniformLocation(program, "u_envelopeDecay"),
       modeGain: gl.getUniformLocation(program, "u_modeGain"),
+      modeMix: gl.getUniformLocation(program, "u_modeMix"),
     };
 
     gl.uniform1i(uLocs.tex0, 0);
@@ -280,22 +309,22 @@
     let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
     let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
-    const TOTAL_MODE_STEPS = 40; // 40 steps for mode distribution variance
-    let modeStep = TOTAL_MODE_STEPS; // starts at 40 (u = 1.0, full spread)
+    const TOTAL_MODE_STEPS = 50; // 50 fine-grained steps for mode variance
+    let modeStep = TOTAL_MODE_STEPS; // starts at 50 (u = 1.0, full multi-mode spread)
 
     function getModeSpread() {
       return modeStep / TOTAL_MODE_STEPS; // in [0.0, 1.0]
     }
 
     function applyModeDistribution() {
-      const u = getModeSpread(); // 1.0 = spread (right), 0.0 = narrow (left)
-      const lod = Math.pow(1.0 - u, 1.4) * 4.2;
-      const decay = (1.0 - u) * 2.5;
+      const u = getModeSpread(); // 1.0 = spread (right), 0.0 = pure TEM00 (left)
+      const lod = Math.pow(1.0 - u, 1.2) * 3.5;
       const gain = 1.0 / (0.22 + 0.78 * Math.pow(u, 1.2));
+      const mixVal = Math.pow(u, 1.3);
 
       gl.uniform1f(uLocs.modeLOD, lod);
-      gl.uniform1f(uLocs.envelopeDecay, decay);
       gl.uniform1f(uLocs.modeGain, gain);
+      gl.uniform1f(uLocs.modeMix, mixVal);
     }
 
     function getSpectralAlpha() {
