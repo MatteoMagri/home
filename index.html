@@ -142,9 +142,11 @@
         sim_p = vec2(p.x * u_aspect, p.y);
       }
 
-      // Zoom factor 0.65 ensures that any rotation angle at any screen aspect ratio
-      // remains strictly inscribed within the valid circular beam wavefield
-      vec2 rotated_p = u_rot * (sim_p * 0.65) + u_offset;
+      // Screen-centered coordinate: strictly 0 at the exact center of the display (v_uv = 0.5)
+      vec2 center_p = sim_p * 0.65;
+
+      // Rotation and translation offset (offset smoothly vanishes as mode variance narrows to pure TEM00)
+      vec2 rotated_p = u_rot * center_p + (u_offset * u_modeMix);
       vec2 sim_uv = rotated_p + 0.5;
 
       // Smooth edge taper to completely prevent any boundary clamping / straight-line streaks
@@ -165,8 +167,8 @@
       vec2 z5_tex = decode(r2.xy) * u_modeGain;
       vec2 z6_tex = decode(r2.zw) * u_modeGain;
 
-      // Pure analytical TEM00 fundamental mode for each wavelength
-      float rad2 = dot(rotated_p, rotated_p);
+      // Pure analytical TEM00 fundamental mode centered exactly at display center
+      float rad2 = dot(center_p, center_p);
       vec2 z1_00 = c00_1 * (exp(-decay_1 * rad2) * 10.0);
       vec2 z2_00 = c00_2 * (exp(-decay_2 * rad2) * 10.0);
       vec2 z3_00 = c00_3 * (exp(-decay_3 * rad2) * 10.0);
