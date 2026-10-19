@@ -77,13 +77,13 @@
     const vec2 c00_5 = vec2(-0.00216672, -0.00114246);
     const vec2 c00_6 = vec2(-0.00005708,  0.00247582);
 
-    // TEM00 Gaussian waist decay factors (1 / w0_j^2 in rotated_p coordinate space)
-    const float decay_1 = 56.96;
-    const float decay_2 = 68.92;
-    const float decay_3 = 82.02;
-    const float decay_4 = 96.25;
-    const float decay_5 = 111.63;
-    const float decay_6 = 128.15;
+    // TEM00 Gaussian waist decay factors (1 / w0_j^2 in rotated_p coordinate space for zoom_range=6000)
+    const float decay_1 = 512.60;
+    const float decay_2 = 620.24;
+    const float decay_3 = 738.14;
+    const float decay_4 = 866.29;
+    const float decay_5 = 1004.69;
+    const float decay_6 = 1153.35;
 
     // Multi-scale dynamic pseudo-random noise generator
     float get_dynamic_noise(vec2 coord, float t) {
@@ -100,14 +100,32 @@
       return (n1 * 0.65 + n2 * 0.35) - 0.5;
     }
 
-    // C2-continuous smooth quintic filtering that completely eliminates bilinear grid artifacts
-    vec4 sample_smooth(sampler2D tex, vec2 uv) {
-      vec2 res = vec2(512.0);
+    // Fast 4-tap C2-continuous bicubic B-spline filter with continuous screen gradients
+    // Evaluates a 16-texel cubic B-spline using 4 hardware bilinear taps
+    // Completely eliminates pixelation errors on zoom-in and eliminates grid artifacts
+    vec4 sample_bicubic(sampler2D tex, vec2 uv, vec2 ddx, vec2 ddy) {
+      vec2 res = vec2(1024.0);
       vec2 coord = uv * res - 0.5;
       vec2 f = fract(coord);
-      vec2 w = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-      vec2 p = (floor(coord) + 0.5 + w) / res;
-      return texture(tex, p);
+      vec2 f2 = f * f;
+      vec2 f3 = f2 * f;
+
+      vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+      vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+      vec2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+      vec2 w3 = f3 / 6.0;
+
+      vec2 s0 = w0 + w1;
+      vec2 s1 = w2 + w3;
+
+      vec2 f0 = w1 / s0;
+      vec2 f1 = w3 / s1;
+
+      vec2 p0 = (floor(coord) - 0.5 + f0) / res;
+      vec2 p1 = (floor(coord) + 1.5 + f1) / res;
+
+      return s0.x * (s0.y * textureGrad(tex, vec2(p0.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p0.x, p1.y), ddx, ddy)) +
+             s1.x * (s0.y * textureGrad(tex, vec2(p1.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p1.x, p1.y), ddx, ddy));
     }
 
     // Inferno colormap (sampled from matplotlib)
@@ -152,29 +170,36 @@
       }
 
       // Screen-centered coordinate: strictly 0 at the exact center of the display (v_uv = 0.5)
-      vec2 center_p = sim_p * (0.65 * u_divScale);
+      // Scale factor 0.2166667 aligns zoom_range=6000 with the exact default magnification
+      vec2 center_p = sim_p * (0.2166667 * u_divScale);
 
       // Pure rotation around display center (zero translation offset: always perfectly centered)
       vec2 rotated_p = u_rot * center_p;
       vec2 sim_uv = rotated_p + 0.5;
 
-      // Smooth edge taper to completely prevent any boundary clamping / straight-line streaks
-      vec2 borderDist = min(sim_uv, 1.0 - sim_uv);
-      float edgeMask = smoothstep(0.0, 0.05, min(borderDist.x, borderDist.y));
+      // Continuous screen-space gradients for artifact-free anisotropic mipmapping
+      vec2 ddx = dFdx(sim_uv);
+      vec2 ddy = dFdy(sim_uv);
+
+      // Radial beam mask: smooth circular fade at the outer perimeter of the wavefield
+      // The wavefield naturally decays to 0 at radius 0.5 (6000 physical units).
+      // Smooth circular taper between r = 0.45 and r = 0.50 guarantees 0 truncation error and zero square borders.
+      float r_beam = length(center_p);
+      float beamMask = smoothstep(0.50, 0.45, r_beam);
 
       vec2 clamped_uv = clamp(sim_uv, 0.0, 1.0);
 
-      // Sample multi-mode complex components from texture with C2-continuous smooth filtering
-      vec4 r0 = sample_smooth(u_tex0, clamped_uv);
-      vec4 r1 = sample_smooth(u_tex1, clamped_uv);
-      vec4 r2 = sample_smooth(u_tex2, clamped_uv);
+      // Sample multi-mode complex components from texture with C2-continuous bicubic B-spline filtering
+      vec4 r0 = sample_bicubic(u_tex0, clamped_uv, ddx, ddy);
+      vec4 r1 = sample_bicubic(u_tex1, clamped_uv, ddx, ddy);
+      vec4 r2 = sample_bicubic(u_tex2, clamped_uv, ddx, ddy);
 
-      vec2 z1_tex = decode(r0.xy);
-      vec2 z2_tex = decode(r0.zw);
-      vec2 z3_tex = decode(r1.xy);
-      vec2 z4_tex = decode(r1.zw);
-      vec2 z5_tex = decode(r2.xy);
-      vec2 z6_tex = decode(r2.zw);
+      vec2 z1_tex = decode(r0.xy) * beamMask;
+      vec2 z2_tex = decode(r0.zw) * beamMask;
+      vec2 z3_tex = decode(r1.xy) * beamMask;
+      vec2 z4_tex = decode(r1.zw) * beamMask;
+      vec2 z5_tex = decode(r2.xy) * beamMask;
+      vec2 z6_tex = decode(r2.zw) * beamMask;
 
       // Pure analytical TEM00 fundamental mode centered exactly at display center
       float rad2 = dot(center_p, center_p);
@@ -206,13 +231,13 @@
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
 
       // Dynamic fluctuation on field amplitude
-      float amp = max(0.0, length(psi) + grain * (u_noiseAmount * 0.22 * u_vmaxAmp)) * edgeMask;
+      float amp = max(0.0, length(psi) + grain * (u_noiseAmount * 0.22 * u_vmaxAmp));
 
       vec3 color = colormap_inferno(amp / u_vmaxAmp);
 
       // Live dynamic photometric analog grain
       color += grain * (u_noiseAmount * 1.35);
-      color = clamp(color * edgeMask, 0.0, 1.0);
+      color = clamp(color, 0.0, 1.0);
 
       fragColor = vec4(color, 1.0);
     }
@@ -287,7 +312,7 @@
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       return tex;
     }
