@@ -145,8 +145,8 @@
       // Screen-centered coordinate: strictly 0 at the exact center of the display (v_uv = 0.5)
       vec2 center_p = sim_p * 0.65;
 
-      // Rotation and translation offset (offset smoothly vanishes as mode variance narrows to pure TEM00)
-      vec2 rotated_p = u_rot * center_p + (u_offset * u_modeMix);
+      // Pure rotation around display center (zero translation offset: always perfectly centered)
+      vec2 rotated_p = u_rot * center_p;
       vec2 sim_uv = rotated_p + 0.5;
 
       // Smooth edge taper to completely prevent any boundary clamping / straight-line streaks
@@ -363,10 +363,8 @@
       const sinT = Math.sin(theta);
       gl.uniformMatrix2fv(uLocs.rot, false, new Float32Array([cosT, sinT, -sinT, cosT]));
 
-      // 2. Random slight spatial center translation within beam core
-      const ox = (Math.random() - 0.5) * 0.08;
-      const oy = (Math.random() - 0.5) * 0.08;
-      gl.uniform2f(uLocs.offset, ox, oy);
+      // 2. Center permanently fixed at display center (no drift during mode variation)
+      gl.uniform2f(uLocs.offset, 0.0, 0.0);
 
       // 3. Random phase shifts for all 6 wavelengths in [0, 2pi)
       const p1 = Math.random() * Math.PI * 2.0;
