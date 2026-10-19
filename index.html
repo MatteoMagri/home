@@ -62,6 +62,7 @@
     uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
     uniform float u_modeMix;    // Mode blend: 0.0 = pure analytical TEM00, 1.0 = full multi-mode field
+    uniform float u_divScale;   // Beam divergence scaling factor
 
     in vec2 v_uv;
     out vec4 fragColor;
@@ -151,7 +152,7 @@
       }
 
       // Screen-centered coordinate: strictly 0 at the exact center of the display (v_uv = 0.5)
-      vec2 center_p = sim_p * 0.65;
+      vec2 center_p = sim_p * (0.65 * u_divScale);
 
       // Pure rotation around display center (zero translation offset: always perfectly centered)
       vec2 rotated_p = u_rot * center_p;
@@ -273,6 +274,7 @@
       noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
       modeMix: gl.getUniformLocation(program, "u_modeMix"),
+      divScale: gl.getUniformLocation(program, "u_divScale"),
     };
 
     gl.uniform1i(uLocs.tex0, 0);
@@ -328,6 +330,17 @@
       const u = getModeSpread(); // 1.0 = spread (right), 0.0 = pure TEM00 (left)
       const mixVal = Math.pow(u, 1.5);
       gl.uniform1f(uLocs.modeMix, mixVal);
+    }
+
+    const MIN_DIV_STEP = -25;
+    const MAX_DIV_STEP = 25;
+    let divStep = 0; // starts at 0 (nominal divergence angle, scale = 1.0)
+
+    function applyDivergenceScale() {
+      // Geometric scaling: 2^(divStep / 15.0)
+      // Range: ~0.315x (step -25) to ~3.17x (step +25), default 1.0x (step 0)
+      const scale = Math.pow(2.0, divStep / 15.0);
+      gl.uniform1f(uLocs.divScale, scale);
     }
 
     function getSpectralAlpha() {
@@ -393,6 +406,7 @@
       loopPeriodSec = 8.0 + Math.random() * 4.0;
       gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
       applyModeDistribution();
+      applyDivergenceScale();
     }
 
     let lastNoiseUpdateTime = 0;
@@ -497,14 +511,26 @@
         }
       } else if (e.code === "ArrowRight") {
         e.preventDefault();
-        // ArrowRight: spread variance of distribution over modes (richer speckles, higher modes)
-        modeStep = Math.min(TOTAL_MODE_STEPS, modeStep + 1);
-        applyModeDistribution();
+        if (e.ctrlKey) {
+          // Ctrl+ArrowRight: divergence angle is increased
+          divStep = Math.min(MAX_DIV_STEP, divStep + 1);
+          applyDivergenceScale();
+        } else {
+          // ArrowRight: spread variance of distribution over modes (richer speckles, higher modes)
+          modeStep = Math.min(TOTAL_MODE_STEPS, modeStep + 1);
+          applyModeDistribution();
+        }
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
-        // ArrowLeft: narrow variance of distribution over modes (smooth speckles, fundamental core)
-        modeStep = Math.max(0, modeStep - 1);
-        applyModeDistribution();
+        if (e.ctrlKey) {
+          // Ctrl+ArrowLeft: divergence angle is decreased
+          divStep = Math.max(MIN_DIV_STEP, divStep - 1);
+          applyDivergenceScale();
+        } else {
+          // ArrowLeft: narrow variance of distribution over modes (smooth speckles, fundamental core)
+          modeStep = Math.max(0, modeStep - 1);
+          applyModeDistribution();
+        }
       } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
         if (currentNoiseAmount === 0.0) currentNoiseAmount = 0.03;
