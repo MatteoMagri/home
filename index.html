@@ -61,6 +61,9 @@
     uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
     uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
+    uniform float u_modeLOD;    // Mode variance filter level: 0.0 (spread) to 4.2 (narrowed)
+    uniform float u_envelopeDecay; // Spatial envelope decay: 0.0 (spread) to 2.5 (narrowed)
+    uniform float u_modeGain;   // Energy-preserving normalization gain
 
     in vec2 v_uv;
     out vec4 fragColor;
@@ -134,9 +137,9 @@
 
       vec2 clamped_uv = clamp(sim_uv, 0.0, 1.0);
 
-      vec4 r0 = texture(u_tex0, clamped_uv);
-      vec4 r1 = texture(u_tex1, clamped_uv);
-      vec4 r2 = texture(u_tex2, clamped_uv);
+      vec4 r0 = textureLod(u_tex0, clamped_uv, u_modeLOD);
+      vec4 r1 = textureLod(u_tex1, clamped_uv, u_modeLOD);
+      vec4 r2 = textureLod(u_tex2, clamped_uv, u_modeLOD);
 
       vec2 z1 = decode(r0.xy);
       vec2 z2 = decode(r0.zw);
@@ -153,6 +156,11 @@
       psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 13.0 * u_time + u_phasesB.x);
       psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 14.0 * u_time + u_phasesB.y);
       psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
+
+      // When mode distribution variance narrows, the beam spatial envelope contracts to fundamental waist
+      float r2 = dot(rotated_p, rotated_p);
+      float envelope = exp(-r2 * u_envelopeDecay);
+      psi *= (envelope * u_modeGain);
 
       // Dynamic noise grain that evolves every frame (zero-mean live static)
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
@@ -219,6 +227,9 @@
       ampsB: gl.getUniformLocation(program, "u_ampsB"),
       noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
+      modeLOD: gl.getUniformLocation(program, "u_modeLOD"),
+      envelopeDecay: gl.getUniformLocation(program, "u_envelopeDecay"),
+      modeGain: gl.getUniformLocation(program, "u_modeGain"),
     };
 
     gl.uniform1i(uLocs.tex0, 0);
@@ -231,7 +242,7 @@
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       return tex;
     }
@@ -262,6 +273,24 @@
     const TOTAL_SPECTRAL_STEPS = 50; // 50 fine-grained steps overall
     let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
     let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+
+    const TOTAL_MODE_STEPS = 40; // 40 steps for mode distribution variance
+    let modeStep = TOTAL_MODE_STEPS; // starts at 40 (u = 1.0, full spread)
+
+    function getModeSpread() {
+      return modeStep / TOTAL_MODE_STEPS; // in [0.0, 1.0]
+    }
+
+    function applyModeDistribution() {
+      const u = getModeSpread(); // 1.0 = spread (right), 0.0 = narrow (left)
+      const lod = Math.pow(1.0 - u, 1.4) * 4.2;
+      const decay = (1.0 - u) * 2.5;
+      const gain = 1.0 / (0.22 + 0.78 * Math.pow(u, 1.2));
+
+      gl.uniform1f(uLocs.modeLOD, lod);
+      gl.uniform1f(uLocs.envelopeDecay, decay);
+      gl.uniform1f(uLocs.modeGain, gain);
+    }
 
     function getSpectralAlpha() {
       const u = spectralStep / TOTAL_SPECTRAL_STEPS;
@@ -327,6 +356,7 @@
       time = Math.random();
       loopPeriodSec = 8.0 + Math.random() * 4.0;
       gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+      applyModeDistribution();
     }
 
     let lastNoiseUpdateTime = 0;
@@ -368,6 +398,7 @@
           img.onload = () => {
             gl.activeTexture(gl.TEXTURE0 + unit);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.generateMipmap(gl.TEXTURE_2D);
             resolve();
           };
           img.src = src;
@@ -406,28 +437,44 @@
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.ctrlKey && e.code === "ArrowUp") {
-        // Ctrl+ArrowUp: step up non-linear curve (50 steps) -> towards all 6 equal
+      if (e.code === "ArrowUp") {
         e.preventDefault();
-        spectralStep = Math.min(TOTAL_SPECTRAL_STEPS, spectralStep + 1);
-        applySpectralDistribution();
-      } else if (e.ctrlKey && e.code === "ArrowDown") {
-        // Ctrl+ArrowDown: step down non-linear curve -> dense points in low values towards only 1st
+        if (e.ctrlKey) {
+          // Ctrl+ArrowUp: increase dynamic noise (up to 10% max)
+          currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
+          gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+        } else {
+          // ArrowUp: step up non-linear curve (50 steps) -> towards all 6 equal
+          spectralStep = Math.min(TOTAL_SPECTRAL_STEPS, spectralStep + 1);
+          applySpectralDistribution();
+        }
+      } else if (e.code === "ArrowDown") {
         e.preventDefault();
-        spectralStep = Math.max(0, spectralStep - 1);
-        applySpectralDistribution();
+        if (e.ctrlKey) {
+          // Ctrl+ArrowDown: decrease dynamic noise (down to 0%)
+          currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
+          gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+        } else {
+          // ArrowDown: step down non-linear curve -> towards only 1st active
+          spectralStep = Math.max(0, spectralStep - 1);
+          applySpectralDistribution();
+        }
+      } else if (e.code === "ArrowRight") {
+        e.preventDefault();
+        // ArrowRight: spread variance of distribution over modes (richer speckles, higher modes)
+        modeStep = Math.min(TOTAL_MODE_STEPS, modeStep + 1);
+        applyModeDistribution();
+      } else if (e.code === "ArrowLeft") {
+        e.preventDefault();
+        // ArrowLeft: narrow variance of distribution over modes (smooth speckles, fundamental core)
+        modeStep = Math.max(0, modeStep - 1);
+        applyModeDistribution();
       } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
         if (currentNoiseAmount === 0.0) currentNoiseAmount = 0.03;
         else if (currentNoiseAmount <= 0.04) currentNoiseAmount = 0.06;
         else if (currentNoiseAmount <= 0.07) currentNoiseAmount = 0.10;
         else currentNoiseAmount = 0.0;
-        gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (!e.ctrlKey && e.code === "ArrowUp") {
-        currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
-        gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
-      } else if (!e.ctrlKey && e.code === "ArrowDown") {
-        currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
       } else if (e.code === "Space") {
         randomizeParameters();
