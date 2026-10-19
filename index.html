@@ -158,8 +158,8 @@
       psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
 
       // When mode distribution variance narrows, the beam spatial envelope contracts to fundamental waist
-      float r2 = dot(rotated_p, rotated_p);
-      float envelope = exp(-r2 * u_envelopeDecay);
+      float rad2 = dot(rotated_p, rotated_p);
+      float envelope = exp(-rad2 * u_envelopeDecay);
       psi *= (envelope * u_modeGain);
 
       // Dynamic noise grain that evolves every frame (zero-mean live static)
@@ -185,6 +185,9 @@
       const shader = gl.createShader(type);
       gl.shaderSource(shader, src);
       gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+      }
       return shader;
     }
 
@@ -194,6 +197,9 @@
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error("Program link error:", gl.getProgramInfoLog(program));
+    }
     gl.useProgram(program);
 
     const quadBuffer = gl.createBuffer();
