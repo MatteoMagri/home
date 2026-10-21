@@ -34,7 +34,7 @@
 <body>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=var100"></script>
+  <script src="beam_data.js?v=mode_apr_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -255,14 +255,31 @@
 
       vec3 color;
       if (u_colorMode == 1) {
-        // Single color gradient (Inferno)
+        // 1. Amplitude modulus only (Inferno colormap)
         color = colormap_inferno(normAmp);
-      } else {
-        // Color wheel: phase is hue, amplitude is brightness
+      } else if (u_colorMode == 0) {
+        // 0. Phase Color Wheel: phase is hue, amplitude is brightness
         float brightness = clamp(pow(normAmp, 0.85), 0.0, 1.0);
         color = color_wheel(hue) * brightness;
         if (normAmp > 1.0) {
           color += vec3(clamp((normAmp - 1.0) * 0.5, 0.0, 0.35));
+        }
+      } else if (u_colorMode == 2) {
+        // 2. Real part: brightness shows Re(psi) - Bipolar (White = positive, Blue = negative)
+        float normReal = psi.x / u_vmaxAmp;
+        float bPos = clamp(pow(max(0.0, normReal), 0.85), 0.0, 1.0);
+        float bNeg = clamp(pow(max(0.0, -normReal), 0.85), 0.0, 1.0);
+        color = vec3(1.0, 1.0, 1.0) * bPos + vec3(0.25, 0.65, 1.0) * bNeg;
+        if (abs(normReal) > 1.0) {
+          color += vec3(clamp((abs(normReal) - 1.0) * 0.5, 0.0, 0.35));
+        }
+      } else if (u_colorMode == 3) {
+        // 3. Real part: pure monochrome brightness showing Re(psi)
+        float normReal = psi.x / u_vmaxAmp;
+        float brightness = clamp(pow(max(0.0, normReal), 0.85), 0.0, 1.0);
+        color = vec3(brightness);
+        if (normReal > 1.0) {
+          color += vec3(clamp((normReal - 1.0) * 0.5, 0.0, 0.35));
         }
       }
 
@@ -338,7 +355,7 @@
     gl.uniform1i(uLocs.tex1, 1);
     gl.uniform1i(uLocs.tex2, 2);
 
-    let colorMode = 0; // 0 = Phase Color Wheel (default), 1 = Single Gradient (Inferno)
+    let colorMode = 1; // Default: 1 = Amplitude (Inferno), 0 = Phase Color Wheel, 2 = Real Part (Bipolar), 3 = Real Part (Mono)
     gl.uniform1i(uLocs.colorMode, colorMode);
 
     function createTexture(unit) {
@@ -597,9 +614,24 @@
           modeStep = Math.max(0, modeStep - 1);
           applyModeDistribution();
         }
+      } else if (e.code === "KeyP") {
+        // Key 'p': Switch to Phase mode (Phase Color Wheel)
+        colorMode = 0;
+        gl.uniform1i(uLocs.colorMode, colorMode);
+      } else if (e.code === "KeyA") {
+        // Key 'a': Switch to Amplitude mode (Inferno colormap)
+        colorMode = 1;
+        gl.uniform1i(uLocs.colorMode, colorMode);
+      } else if (e.code === "KeyR") {
+        // Key 'r': Switch to Real part mode (toggles between Bipolar and Pure Monochrome)
+        colorMode = (colorMode === 2) ? 3 : 2;
+        gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyC") {
-        // Toggle color mode between 0 (Phase Color Wheel) and 1 (Single Gradient Inferno)
-        colorMode = (colorMode === 0) ? 1 : 0;
+        // Key 'c': Cycle all modes: Amplitude (1) -> Phase (0) -> Real Bipolar (2) -> Real Mono (3)
+        if (colorMode === 1) colorMode = 0;
+        else if (colorMode === 0) colorMode = 2;
+        else if (colorMode === 2) colorMode = 3;
+        else colorMode = 1;
         gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
