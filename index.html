@@ -70,21 +70,21 @@
 
     const float TWO_PI = 6.283185307179586;
 
-    // Pure TEM00 fundamental mode coefficients (from normal mode expansion)
-    const vec2 c00_1 = vec2( 0.00154868, -0.00062582);
-    const vec2 c00_2 = vec2(-0.00169077, -0.00047714);
-    const vec2 c00_3 = vec2( 0.00007815, -0.00153174);
-    const vec2 c00_4 = vec2( 0.00198206,  0.00035866);
-    const vec2 c00_5 = vec2(-0.00216672, -0.00114246);
-    const vec2 c00_6 = vec2(-0.00005708,  0.00247582);
+    // Pure TEM00 fundamental mode coefficients (reciprocal-space shell model)
+    const vec2 c00_1 = vec2( 0.01500000,  0.00000000);
+    const vec2 c00_2 = vec2( 0.01045060,  0.01076034);
+    const vec2 c00_3 = vec2(-0.00043799,  0.01499360);
+    const vec2 c00_4 = vec2(-0.01106091,  0.01013195);
+    const vec2 c00_5 = vec2(-0.01497442, -0.00087561);
+    const vec2 c00_6 = vec2(-0.00980465, -0.01135204);
 
-    // TEM00 Gaussian waist decay factors (1 / w0_j^2 in rotated_p coordinate space for zoom_range=6000)
-    const float decay_1 = 512.60;
-    const float decay_2 = 620.24;
-    const float decay_3 = 738.14;
-    const float decay_4 = 866.29;
-    const float decay_5 = 1004.69;
-    const float decay_6 = 1153.35;
+    // TEM00 Gaussian waist decay factors: w0_j = w0_1 / kj matching speckle grain size exactly
+    const float decay_1 = 576.00;
+    const float decay_2 = 696.96;
+    const float decay_3 = 829.44;
+    const float decay_4 = 973.44;
+    const float decay_5 = 1128.96;
+    const float decay_6 = 1296.00;
 
     // Multi-scale dynamic pseudo-random noise generator
     float get_dynamic_noise(vec2 coord, float t) {
@@ -210,12 +210,12 @@
 
       // Pure analytical TEM00 fundamental mode centered exactly at display center
       float rad2 = dot(center_p, center_p);
-      vec2 z1_00 = c00_1 * (exp(-decay_1 * rad2) * 10.0);
-      vec2 z2_00 = c00_2 * (exp(-decay_2 * rad2) * 10.0);
-      vec2 z3_00 = c00_3 * (exp(-decay_3 * rad2) * 10.0);
-      vec2 z4_00 = c00_4 * (exp(-decay_4 * rad2) * 10.0);
-      vec2 z5_00 = c00_5 * (exp(-decay_5 * rad2) * 10.0);
-      vec2 z6_00 = c00_6 * (exp(-decay_6 * rad2) * 10.0);
+      vec2 z1_00 = c00_1 * exp(-decay_1 * rad2);
+      vec2 z2_00 = c00_2 * exp(-decay_2 * rad2);
+      vec2 z3_00 = c00_3 * exp(-decay_3 * rad2);
+      vec2 z4_00 = c00_4 * exp(-decay_4 * rad2);
+      vec2 z5_00 = c00_5 * exp(-decay_5 * rad2);
+      vec2 z6_00 = c00_6 * exp(-decay_6 * rad2);
 
       // Blend smoothly: at u_modeMix = 0.0 strictly pure TEM00; at 1.0 full multi-mode
       vec2 z1 = mix(z1_00, z1_tex, u_modeMix);
@@ -383,10 +383,20 @@
       return modeStep / TOTAL_MODE_STEPS; // in [0.0, 1.0]
     }
 
+    function updateEffectiveVmax() {
+      if (!window.BEAM_DATA) return;
+      const alpha = getSpectralAlpha();
+      const u = getModeSpread();
+      const baseVmax = window.BEAM_DATA.vmax_amp;
+      const effVmax = baseVmax * (0.22 + 0.78 * alpha) * (0.65 + 0.35 * u);
+      gl.uniform1f(uLocs.vmaxAmp, effVmax);
+    }
+
     function applyModeDistribution() {
       const u = getModeSpread(); // 1.0 = spread (right), 0.0 = pure TEM00 (left)
       const mixVal = Math.pow(u, 1.5);
       gl.uniform1f(uLocs.modeMix, mixVal);
+      updateEffectiveVmax();
     }
 
     const MIN_DIV_STEP = -25;
@@ -420,11 +430,7 @@
       gl.uniform3f(uLocs.ampsB, w4, w5, w6);
 
       // Dynamically re-normalize vmaxAmp so dynamic range and contrast remain vibrant
-      if (window.BEAM_DATA) {
-        const baseVmax = window.BEAM_DATA.vmax_amp;
-        const effVmax = baseVmax * (0.22 + 0.78 * alpha);
-        gl.uniform1f(uLocs.vmaxAmp, effVmax);
-      }
+      updateEffectiveVmax();
     }
 
     function randomizeParameters() {
