@@ -34,7 +34,7 @@
 <body>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=boxcar_modemove_20261022"></script>
+  <script src="beam_data.js?v=mode_steps200_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -407,8 +407,8 @@
     let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
     let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
-    const TOTAL_MODE_STEPS = 50; // 50 fine-grained steps for mode variance
-    let modeStep = TOTAL_MODE_STEPS; // starts at 50 (u = 1.0, full multi-mode spread)
+    const TOTAL_MODE_STEPS = 200; // 200 ultra-fine steps for mode expansion (0.5% radius per step)
+    let modeStep = TOTAL_MODE_STEPS; // starts at 200 (u = 1.0, full multi-mode spread)
 
     function getModeSpread() {
       return modeStep / TOTAL_MODE_STEPS; // in [0.0, 1.0]
