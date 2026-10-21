@@ -63,6 +63,7 @@
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
     uniform float u_modeMix;    // Mode blend: 0.0 = pure analytical TEM00, 1.0 = full multi-mode field
     uniform float u_divScale;   // Beam divergence scaling factor
+    uniform int u_colorMode;    // 0 = Phase Color Wheel, 1 = Single Gradient (Inferno)
 
     in vec2 v_uv;
     out vec4 fragColor;
@@ -126,6 +127,12 @@
 
       return s0.x * (s0.y * textureGrad(tex, vec2(p0.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p0.x, p1.y), ddx, ddy)) +
              s1.x * (s0.y * textureGrad(tex, vec2(p1.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p1.x, p1.y), ddx, ddy));
+    }
+
+    // Smooth cyclic color wheel for optical phase: Hue in [0, 1] -> RGB spectral wheel
+    vec3 color_wheel(float hue) {
+      vec3 p = abs(fract(hue + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+      return clamp(p - 1.0, 0.0, 1.0);
     }
 
     // Inferno colormap (sampled from matplotlib)
@@ -230,10 +237,29 @@
       // Dynamic noise grain that evolves every frame (zero-mean live static)
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
 
-      // Dynamic fluctuation on field amplitude
-      float amp = max(0.0, length(psi) + grain * (u_noiseAmount * 0.22 * u_vmaxAmp));
+      // Raw physical complex field amplitude and phase
+      float rawAmp = length(psi);
+      float phase = (rawAmp > 1e-7) ? atan(psi.y, psi.x) : 0.0;
+      float hue = fract(phase / TWO_PI + 1.0);
 
-      vec3 color = colormap_inferno(amp / u_vmaxAmp);
+      // Dynamic fluctuation on field amplitude
+      float amp = max(0.0, rawAmp + grain * (u_noiseAmount * 0.22 * u_vmaxAmp));
+
+      // Amplitude represented by brightness with smooth perceptual gamma
+      float normAmp = amp / u_vmaxAmp;
+
+      vec3 color;
+      if (u_colorMode == 1) {
+        // Single color gradient (Inferno)
+        color = colormap_inferno(normAmp);
+      } else {
+        // Color wheel: phase is hue, amplitude is brightness
+        float brightness = clamp(pow(normAmp, 0.85), 0.0, 1.0);
+        color = color_wheel(hue) * brightness;
+        if (normAmp > 1.0) {
+          color += vec3(clamp((normAmp - 1.0) * 0.5, 0.0, 0.35));
+        }
+      }
 
       // Live dynamic photometric analog grain
       color += grain * (u_noiseAmount * 1.35);
@@ -300,11 +326,15 @@
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
       modeMix: gl.getUniformLocation(program, "u_modeMix"),
       divScale: gl.getUniformLocation(program, "u_divScale"),
+      colorMode: gl.getUniformLocation(program, "u_colorMode"),
     };
 
     gl.uniform1i(uLocs.tex0, 0);
     gl.uniform1i(uLocs.tex1, 1);
     gl.uniform1i(uLocs.tex2, 2);
+
+    let colorMode = 0; // 0 = Phase Color Wheel (default), 1 = Single Gradient (Inferno)
+    gl.uniform1i(uLocs.colorMode, colorMode);
 
     function createTexture(unit) {
       const tex = gl.createTexture();
@@ -556,6 +586,10 @@
           modeStep = Math.max(0, modeStep - 1);
           applyModeDistribution();
         }
+      } else if (e.code === "KeyC") {
+        // Toggle color mode between 0 (Phase Color Wheel) and 1 (Single Gradient Inferno)
+        colorMode = (colorMode === 0) ? 1 : 0;
+        gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyN") {
         // Cycle noise presets capped at 10%: 0.0 -> 0.03 -> 0.06 -> 0.10 (max) -> 0.0
         if (currentNoiseAmount === 0.0) currentNoiseAmount = 0.03;
