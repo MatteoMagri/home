@@ -225,14 +225,16 @@
       vec2 z5 = mix(z5_00, z5_tex, u_modeMix);
       vec2 z6 = mix(z6_00, z6_tex, u_modeMix);
 
-      // Superposition with 10-cycle beat loop [10, 11, 12, 13, 14, 15] + random phases & weights
+      // Superposition referenced to primary carrier phase (10-cycle carrier demodulation)
+      // Uses the cycling phase of the primary beam as reference to eliminate stroboscopic carrier flashing.
+      // Evolving strictly at physical beat frequencies [0, 1, 2, 3, 4, 5] cycles per 10-second loop.
       vec2 psi = vec2(0.0);
-      psi += u_ampsA.x * rotate_phasor(z1, TWO_PI * 10.0 * u_time + u_phasesA.x);
-      psi += u_ampsA.y * rotate_phasor(z2, TWO_PI * 11.0 * u_time + u_phasesA.y);
-      psi += u_ampsA.z * rotate_phasor(z3, TWO_PI * 12.0 * u_time + u_phasesA.z);
-      psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 13.0 * u_time + u_phasesB.x);
-      psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 14.0 * u_time + u_phasesB.y);
-      psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 15.0 * u_time + u_phasesB.z);
+      psi += u_ampsA.x * z1; // Reference carrier: stationary relative phase (0 Hz baseband)
+      psi += u_ampsA.y * rotate_phasor(z2, TWO_PI * 1.0 * u_time + (u_phasesA.y - u_phasesA.x));
+      psi += u_ampsA.z * rotate_phasor(z3, TWO_PI * 2.0 * u_time + (u_phasesA.z - u_phasesA.x));
+      psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 3.0 * u_time + (u_phasesB.x - u_phasesA.x));
+      psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 4.0 * u_time + (u_phasesB.y - u_phasesA.x));
+      psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 5.0 * u_time + (u_phasesB.z - u_phasesA.x));
 
       // Dynamic noise grain that evolves every frame (zero-mean live static)
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
