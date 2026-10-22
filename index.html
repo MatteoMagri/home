@@ -109,7 +109,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=beam30_20261022"></script>
+  <script src="assets/js/beam_data.js?v=beam30_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -702,7 +702,7 @@
 
       const loadPromises = [];
       for (let i = 0; i < numTextures; i++) {
-        const src = (data.tex_b64 && data.tex_b64[i]) ? data.tex_b64[i] : `tex${i}.png`;
+        const src = (data.tex_b64 && data.tex_b64[i]) ? data.tex_b64[i] : `assets/textures/tex${i}.png`;
         loadPromises.push(loadImage(src, i));
       }
 
