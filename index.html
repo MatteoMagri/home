@@ -104,8 +104,8 @@
       <span id="valCohFrac" class="info-value">1.4%</span>
     </div>
     <div class="info-item">
-      <span class="info-label">L<sub>c</sub>/&lambda;:</span>
-      <span id="valLcL" class="info-value">7.3</span>
+      <span class="info-label">Transversal coherence length/&lambda;:</span>
+      <span id="valLcL" class="info-value">35.4</span>
     </div>
     <div class="info-item scale-item">
       <span class="info-label">Scale:</span>
@@ -117,7 +117,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=top_info_bar_20261022"></script>
+  <script src="beam_data.js?v=transversal_coherence_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -624,16 +624,6 @@
         elDeE.textContent = (dE_over_E < 0.0005) ? "0.0%" : (dE_over_E * 100).toFixed(1) + "%";
       }
 
-      const elLcL = document.getElementById("valLcL");
-      if (elLcL) {
-        if (dE_over_E < 0.0005) {
-          elLcL.textContent = "∞";
-        } else {
-          const lc = 1.0 / dE_over_E;
-          elLcL.textContent = lc >= 100 ? Math.round(lc).toString() : lc.toFixed(1);
-        }
-      }
-
       // 2. Coherence fraction beta = w0 / W(u)
       const u = getModeSpread();
       const w0 = 35.355339;
@@ -649,6 +639,16 @@
         } else {
           elCohFrac.textContent = (beta * 100).toFixed(2) + "%";
         }
+      }
+
+      // 3. Transversal coherence length / lambda: lc_perp / lambda = w0 / (lambda * divScale)
+      const divScale = Math.pow(2.0, divStep / 15.0);
+      const lcTransverse = w0 / divScale;
+      const elLcL = document.getElementById("valLcL");
+      if (elLcL) {
+        elLcL.textContent = (lcTransverse >= 100)
+          ? Math.round(lcTransverse).toString()
+          : lcTransverse.toFixed(1);
       }
 
       // 3. Scale bar for reference of wavelength size
