@@ -2,32 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <title>magri.me</title>
-  <link rel="icon" href="data:,">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Partially Coherent Optical Beam Simulator</title>
   <style>
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
     }
     html, body {
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background: #000;
+      background-color: #000000;
     }
     canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
+      display: block;
       width: 100vw;
       height: 100vh;
-      display: block;
-      cursor: pointer;
+      touch-action: none;
     }
     .info-bar {
       position: fixed;
@@ -38,37 +33,34 @@
       min-height: 24px;
       max-height: 48px;
       background: #ffffff;
-      color: #111111;
-      z-index: 1000;
+      color: #000000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: clamp(10px, 1.25vh, 14px);
       display: flex;
       align-items: center;
       justify-content: space-around;
-      padding: 0 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      font-weight: 500;
-      font-size: clamp(10px, 1.25vh, 13px);
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
-      user-select: none;
+      padding: 0 16px;
+      z-index: 1000;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
       pointer-events: none;
-      box-sizing: border-box;
     }
     .info-item {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 6px;
       white-space: nowrap;
     }
     .info-label {
-      font-weight: 600;
-      color: #555555;
+      font-weight: 500;
+      color: #333333;
     }
     .info-value {
       font-weight: 700;
       color: #000000;
+      font-variant-numeric: tabular-nums;
     }
     .scale-item {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 8px;
     }
@@ -117,7 +109,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=real_red_blue_20261022"></script>
+  <script src="beam_data.js?v=beam30_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -129,10 +121,9 @@
 
     const fsSource = `#version 300 es
     precision highp float;
+    precision highp sampler2DArray;
 
-    uniform sampler2D u_tex0;
-    uniform sampler2D u_tex1;
-    uniform sampler2D u_tex2;
+    uniform sampler2DArray u_texArray;
     uniform float u_time;
     uniform float u_maxVal;
     uniform float u_vmaxAmp;
@@ -141,15 +132,13 @@
     // Random parameters randomized each time page loads
     uniform mat2 u_rot;        // Random 2D spatial rotation
     uniform vec2 u_offset;     // Random center translation
-    uniform vec3 u_phasesA;    // Random relative phases for beams 1, 2, 3
-    uniform vec3 u_phasesB;    // Random relative phases for beams 4, 5, 6
-    uniform vec3 u_ampsA;      // Random amplitude weights for beams 1, 2, 3
-    uniform vec3 u_ampsB;      // Random amplitude weights for beams 4, 5, 6
+    uniform float u_amps[30];   // Amplitude weights for the 30 beam components
+    uniform float u_phases[30]; // Relative phases for the 30 beam components
     uniform float u_noiseTime;  // Live temporal noise seed (changes each frame)
     uniform float u_noiseAmount;// Dynamic noise strength (capped at 0.10)
     uniform float u_modeMix;    // Mode blend: 0.0 = pure analytical TEM00, 1.0 = full multi-mode field
     uniform float u_divScale;   // Beam divergence scaling factor
-    uniform int u_colorMode;    // 0 = Phase Color Wheel, 1 = Single Gradient (Inferno)
+    uniform int u_colorMode;    // 0 = Phase Color Wheel, 1 = Single Gradient (Inferno), 2 = Real Part Bipolar
 
     in vec2 v_uv;
     out vec4 fragColor;
@@ -157,20 +146,40 @@
     const float TWO_PI = 6.283185307179586;
 
     // Pure TEM00 fundamental mode coefficients (reciprocal-space shell model)
-    const vec2 c00_1 = vec2( 0.01500000,  0.00000000);
-    const vec2 c00_2 = vec2( 0.01045060,  0.01076034);
-    const vec2 c00_3 = vec2(-0.00043799,  0.01499360);
-    const vec2 c00_4 = vec2(-0.01106091,  0.01013195);
-    const vec2 c00_5 = vec2(-0.01497442, -0.00087561);
-    const vec2 c00_6 = vec2(-0.00980465, -0.01135204);
+    const vec2 c_c00[30] = vec2[30](
+      vec2(0.01500000, 0.00000000), vec2(0.01045060, 0.01076034),
+      vec2(-0.00043799, 0.01499360), vec2(-0.01106091, 0.01013195),
+      vec2(-0.01497442, -0.00087561), vec2(-0.00980465, -0.01135204),
+      vec2(0.00131248, -0.01494247), vec2(0.01163349, -0.00946900),
+      vec2(0.01489777, 0.00174824), vec2(0.00912527, 0.01190502),
+      vec2(-0.00218250, 0.01484037), vec2(-0.01216640, 0.00877376),
+      vec2(-0.01477032, -0.00261490), vec2(-0.00841476, -0.01241740),
+      vec2(0.00304507, -0.01468767), vec2(0.01265781, -0.00804859),
+      vec2(0.01459249, 0.00347265), vec2(0.00767556, 0.01288743),
+      vec2(-0.00389726, 0.01448487), vec2(-0.01310605, 0.00729598),
+      vec2(-0.01436489, -0.00431855), vec2(-0.00691018, -0.01331351),
+      vec2(0.00473616, -0.01423267), vec2(0.01350960, -0.00651848),
+      vec2(0.01408831, 0.00514972), vec2(0.00612123, 0.01369418),
+      vec2(-0.00555890, 0.01393193), vec2(-0.01386708, 0.00571876),
+      vec2(-0.01376367, -0.00596334), vec2(-0.00531141, -0.01402815)
+    );
 
     // TEM00 Gaussian waist decay factors: w0_j = w0_1 / kj matching speckle grain size exactly
-    const float decay_1 = 115200.00;
-    const float decay_2 = 139392.00;
-    const float decay_3 = 165888.00;
-    const float decay_4 = 194688.00;
-    const float decay_5 = 225792.00;
-    const float decay_6 = 259200.00;
+    const float c_decay[30] = float[30](
+      63165.7, 66367.8, 69649.1, 73009.6, 76449.2,
+      79968.0, 83566.0, 87243.2, 90999.5, 94835.0,
+      98749.7, 102743.5, 106816.5, 110968.7, 115200.0,
+      118967.4, 122795.4, 126683.9, 130633.2, 134643.0,
+      138713.4, 142844.5, 147036.2, 151288.4, 155601.3,
+      159974.9, 164409.0, 168903.7, 173459.1, 178075.1
+    );
+
+    // Integer beat cycles referenced to k = 1.000 carrier at index 14
+    const float c_beatCycles[30] = float[30](
+      -14.0, -13.0, -12.0, -11.0, -10.0, -9.0, -8.0, -7.0, -6.0, -5.0,
+      -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
+      6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0
+    );
 
     // Multi-scale dynamic pseudo-random noise generator
     float get_dynamic_noise(vec2 coord, float t) {
@@ -187,11 +196,11 @@
       return (n1 * 0.65 + n2 * 0.35) - 0.5;
     }
 
-    // Fast 4-tap C2-continuous bicubic B-spline filter with continuous screen gradients
+    // Fast 4-tap C2-continuous bicubic B-spline filter for TEXTURE_2D_ARRAY
     // Evaluates a 16-texel cubic B-spline using 4 hardware bilinear taps
     // Completely eliminates pixelation errors on zoom-in and eliminates grid artifacts
-    vec4 sample_bicubic(sampler2D tex, vec2 uv, vec2 ddx, vec2 ddy) {
-      vec2 res = vec2(1024.0);
+    vec4 sample_bicubic_array(sampler2DArray tex, vec2 uv, float layer, vec2 ddx, vec2 ddy) {
+      vec2 res = vec2(512.0);
       vec2 coord = uv * res - 0.5;
       vec2 f = fract(coord);
       vec2 f2 = f * f;
@@ -211,8 +220,8 @@
       vec2 p0 = (floor(coord) - 0.5 + f0) / res;
       vec2 p1 = (floor(coord) + 1.5 + f1) / res;
 
-      return s0.x * (s0.y * textureGrad(tex, vec2(p0.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p0.x, p1.y), ddx, ddy)) +
-             s1.x * (s0.y * textureGrad(tex, vec2(p1.x, p0.y), ddx, ddy) + s1.y * textureGrad(tex, vec2(p1.x, p1.y), ddx, ddy));
+      return s0.x * (s0.y * textureGrad(tex, vec3(p0.x, p0.y, layer), ddx, ddy) + s1.y * textureGrad(tex, vec3(p0.x, p1.y, layer), ddx, ddy)) +
+             s1.x * (s0.y * textureGrad(tex, vec3(p1.x, p0.y, layer), ddx, ddy) + s1.y * textureGrad(tex, vec3(p1.x, p1.y, layer), ddx, ddy));
     }
 
     // Smooth cyclic color wheel for optical phase: Hue in [0, 1] -> RGB spectral wheel
@@ -274,82 +283,46 @@
       vec2 ddx = dFdx(sim_uv);
       vec2 ddy = dFdy(sim_uv);
 
-      // Radial beam mask: smooth circular fade at the outer perimeter of the wavefield
-      // The wavefield naturally decays to 0 at radius 0.5 (6000 physical units).
-      // Smooth circular taper between r = 0.45 and r = 0.50 guarantees 0 truncation error and zero square borders.
+      // Radial beam mask: smooth circular fade at outer perimeter of wavefield (r = 0.45 to 0.50)
       float r_beam = length(center_p);
       float beamMask = smoothstep(0.50, 0.45, r_beam);
 
       vec2 clamped_uv = clamp(sim_uv, 0.0, 1.0);
 
-      // Sample multi-mode complex components from texture with C2-continuous bicubic B-spline filtering
-      vec4 r0 = sample_bicubic(u_tex0, clamped_uv, ddx, ddy);
-      vec4 r1 = sample_bicubic(u_tex1, clamped_uv, ddx, ddy);
-      vec4 r2 = sample_bicubic(u_tex2, clamped_uv, ddx, ddy);
-
-      vec2 z1_tex = decode(r0.xy) * beamMask;
-      vec2 z2_tex = decode(r0.zw) * beamMask;
-      vec2 z3_tex = decode(r1.xy) * beamMask;
-      vec2 z4_tex = decode(r1.zw) * beamMask;
-      vec2 z5_tex = decode(r2.xy) * beamMask;
-      vec2 z6_tex = decode(r2.zw) * beamMask;
-
-      // Pure analytical TEM00 fundamental mode centered exactly at display center
-      float rad2 = dot(center_p, center_p);
-      vec2 z1_00 = c00_1 * exp(-decay_1 * rad2);
-      vec2 z2_00 = c00_2 * exp(-decay_2 * rad2);
-      vec2 z3_00 = c00_3 * exp(-decay_3 * rad2);
-      vec2 z4_00 = c00_4 * exp(-decay_4 * rad2);
-      vec2 z5_00 = c00_5 * exp(-decay_5 * rad2);
-      vec2 z6_00 = c00_6 * exp(-decay_6 * rad2);
-
       // Dynamic Gaussian beam waist expansion controlled by Left / Right arrow keys
-      // u_modeMix in [0.0, 1.0]:
-      // At u = 0.0, waist = w0 (strictly single TEM00 speckle, 35.4 px)
-      // As u increases, Gaussian waist W(u) expands smoothly from 35.4 px to 2600 px (full macroscopic Gaussian cloud)
-      // The spatial envelope across the beam is strictly Gaussian at every step!
       float w_max = 0.2166667; // 2600.0 / 12000.0
       float u_curve = pow(u_modeMix, 1.3);
-
-      // Dynamic waist for each wavelength
-      float w1_u = (1.0 / sqrt(decay_1)) + (w_max - (1.0 / sqrt(decay_1))) * u_curve;
-      float w2_u = (1.0 / sqrt(decay_2)) + (w_max - (1.0 / sqrt(decay_2))) * u_curve;
-      float w3_u = (1.0 / sqrt(decay_3)) + (w_max - (1.0 / sqrt(decay_3))) * u_curve;
-      float w4_u = (1.0 / sqrt(decay_4)) + (w_max - (1.0 / sqrt(decay_4))) * u_curve;
-      float w5_u = (1.0 / sqrt(decay_5)) + (w_max - (1.0 / sqrt(decay_5))) * u_curve;
-      float w6_u = (1.0 / sqrt(decay_6)) + (w_max - (1.0 / sqrt(decay_6))) * u_curve;
-
-      // Gaussian decay factor for cloud envelope at current size: decay = 1 / (w_u^2)
-      // Speckle component smoothly envelops with expanding Gaussian waist
-      float env1 = exp(-rad2 / (w1_u * w1_u));
-      float env2 = exp(-rad2 / (w2_u * w2_u));
-      float env3 = exp(-rad2 / (w3_u * w3_u));
-      float env4 = exp(-rad2 / (w4_u * w4_u));
-      float env5 = exp(-rad2 / (w5_u * w5_u));
-      float env6 = exp(-rad2 / (w6_u * w6_u));
-
       float speckle_factor = smoothstep(0.0, 0.02, u_modeMix);
+      float rad2 = dot(center_p, center_p);
 
-      // z_tex = z_00 + z_speckle, so z_speckle = z_tex - z_00
-      // When u_modeMix = 0.0: speckle_factor = 0.0 -> strictly z_00 (pure analytical single speckle)
-      // As u_modeMix increases: Gaussian envelope widens, uncovering more and more speckles continuously!
-      vec2 z1 = z1_00 + (z1_tex - z1_00) * (speckle_factor * env1);
-      vec2 z2 = z2_00 + (z2_tex - z2_00) * (speckle_factor * env2);
-      vec2 z3 = z3_00 + (z3_tex - z3_00) * (speckle_factor * env3);
-      vec2 z4 = z4_00 + (z4_tex - z4_00) * (speckle_factor * env4);
-      vec2 z5 = z5_00 + (z5_tex - z5_00) * (speckle_factor * env5);
-      vec2 z6 = z6_00 + (z6_tex - z6_00) * (speckle_factor * env6);
-
-      // Superposition referenced to primary carrier phase (10-cycle carrier demodulation)
-      // Uses the cycling phase of the primary beam as reference to eliminate stroboscopic carrier flashing.
-      // Evolving strictly at physical beat frequencies [0, 1, 2, 3, 4, 5] cycles per 10-second loop.
       vec2 psi = vec2(0.0);
-      psi += u_ampsA.x * z1; // Reference carrier: stationary relative phase (0 Hz baseband)
-      psi += u_ampsA.y * rotate_phasor(z2, TWO_PI * 1.0 * u_time + (u_phasesA.y - u_phasesA.x));
-      psi += u_ampsA.z * rotate_phasor(z3, TWO_PI * 2.0 * u_time + (u_phasesA.z - u_phasesA.x));
-      psi += u_ampsB.x * rotate_phasor(z4, TWO_PI * 3.0 * u_time + (u_phasesB.x - u_phasesA.x));
-      psi += u_ampsB.y * rotate_phasor(z5, TWO_PI * 4.0 * u_time + (u_phasesB.y - u_phasesA.x));
-      psi += u_ampsB.z * rotate_phasor(z6, TWO_PI * 5.0 * u_time + (u_phasesB.z - u_phasesA.x));
+
+      // Accumulate 30 beam components from 15 layers of u_texArray
+      for (int i = 0; i < 15; i++) {
+        vec4 r = sample_bicubic_array(u_texArray, clamped_uv, float(i), ddx, ddy);
+
+        // Sub-component A (index 2*i)
+        int jA = 2 * i;
+        vec2 zA_tex = decode(r.xy) * beamMask;
+        float decayA = c_decay[jA];
+        vec2 zA_00 = c_c00[jA] * exp(-decayA * rad2);
+        float wA_u = (1.0 / sqrt(decayA)) + (w_max - (1.0 / sqrt(decayA))) * u_curve;
+        float envA = exp(-rad2 / (wA_u * wA_u));
+        vec2 zA = zA_00 + (zA_tex - zA_00) * (speckle_factor * envA);
+        float angA = TWO_PI * c_beatCycles[jA] * u_time + u_phases[jA];
+        psi += u_amps[jA] * rotate_phasor(zA, angA);
+
+        // Sub-component B (index 2*i + 1)
+        int jB = 2 * i + 1;
+        vec2 zB_tex = decode(r.zw) * beamMask;
+        float decayB = c_decay[jB];
+        vec2 zB_00 = c_c00[jB] * exp(-decayB * rad2);
+        float wB_u = (1.0 / sqrt(decayB)) + (w_max - (1.0 / sqrt(decayB))) * u_curve;
+        float envB = exp(-rad2 / (wB_u * wB_u));
+        vec2 zB = zB_00 + (zB_tex - zB_00) * (speckle_factor * envB);
+        float angB = TWO_PI * c_beatCycles[jB] * u_time + u_phases[jB];
+        psi += u_amps[jB] * rotate_phasor(zB, angB);
+      }
 
       // Dynamic noise grain that evolves every frame (zero-mean live static)
       float grain = get_dynamic_noise(gl_FragCoord.xy, u_noiseTime);
@@ -377,9 +350,9 @@
           color += vec3(clamp((normAmp - 1.0) * 0.5, 0.0, 0.35));
         }
       } else if (u_colorMode == 2) {
-        // 2. Real part: Re(psi) WITHOUT phase correction (true optical carrier oscillation: 10 cycles / loop)
+        // 2. Real part: Re(psi) WITHOUT phase correction (true optical carrier oscillation: 20 cycles / loop)
         // Bipolar Red & Blue: positive crests = Red, negative troughs = Blue, zero = Black
-        float carrierAngle = TWO_PI * 10.0 * u_time + u_phasesA.x;
+        float carrierAngle = TWO_PI * 20.0 * u_time + u_phases[14];
         vec2 psi_raw = rotate_phasor(psi, carrierAngle);
         float normReal = psi_raw.x / u_vmaxAmp;
         float bPos = clamp(pow(max(0.0, normReal), 0.85), 0.0, 1.0);
@@ -440,19 +413,15 @@
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
     const uLocs = {
-      tex0: gl.getUniformLocation(program, "u_tex0"),
-      tex1: gl.getUniformLocation(program, "u_tex1"),
-      tex2: gl.getUniformLocation(program, "u_tex2"),
+      texArray: gl.getUniformLocation(program, "u_texArray"),
       time: gl.getUniformLocation(program, "u_time"),
       maxVal: gl.getUniformLocation(program, "u_maxVal"),
       vmaxAmp: gl.getUniformLocation(program, "u_vmaxAmp"),
       aspect: gl.getUniformLocation(program, "u_aspect"),
       rot: gl.getUniformLocation(program, "u_rot"),
       offset: gl.getUniformLocation(program, "u_offset"),
-      phasesA: gl.getUniformLocation(program, "u_phasesA"),
-      phasesB: gl.getUniformLocation(program, "u_phasesB"),
-      ampsA: gl.getUniformLocation(program, "u_ampsA"),
-      ampsB: gl.getUniformLocation(program, "u_ampsB"),
+      amps: gl.getUniformLocation(program, "u_amps"),
+      phases: gl.getUniformLocation(program, "u_phases"),
       noiseTime: gl.getUniformLocation(program, "u_noiseTime"),
       noiseAmount: gl.getUniformLocation(program, "u_noiseAmount"),
       modeMix: gl.getUniformLocation(program, "u_modeMix"),
@@ -460,27 +429,10 @@
       colorMode: gl.getUniformLocation(program, "u_colorMode"),
     };
 
-    gl.uniform1i(uLocs.tex0, 0);
-    gl.uniform1i(uLocs.tex1, 1);
-    gl.uniform1i(uLocs.tex2, 2);
+    gl.uniform1i(uLocs.texArray, 0);
 
-    let colorMode = 1; // Default: 1 = Amplitude (Inferno), 0 = Phase Color Wheel, 2 = Real Part (Bipolar), 3 = Real Part (Mono)
+    let colorMode = 1; // Default: 1 = Amplitude (Inferno), 0 = Phase Color Wheel, 2 = Real Part (Bipolar)
     gl.uniform1i(uLocs.colorMode, colorMode);
-
-    function createTexture(unit) {
-      const tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE0 + unit);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      return tex;
-    }
-
-    createTexture(0);
-    createTexture(1);
-    createTexture(2);
 
     function resizeCanvas() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -503,8 +455,9 @@
 
     let currentNoiseAmount = 0.10;
     const TOTAL_SPECTRAL_STEPS = 50; // 50 fine-grained steps overall
-    let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (alpha = 1.0, all 6 equal)
-    let baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+    let spectralStep = TOTAL_SPECTRAL_STEPS; // starts at 50 (dE/E = 15.0%)
+    const amps = new Float32Array(30);
+    const phases = new Float32Array(30);
 
     const TOTAL_MODE_STEPS = 200; // 200 ultra-fine steps for mode expansion (0.5% radius per step)
     let modeStep = TOTAL_MODE_STEPS; // starts at 200 (u = 1.0, full multi-mode spread)
@@ -513,15 +466,12 @@
       return modeStep / TOTAL_MODE_STEPS; // in [0.0, 1.0]
     }
 
-    const ALPHA_MAX_15PCT = 0.328122; // Exactly 15.0% dE/E relative bandwidth limit
-
     function updateEffectiveVmax() {
       if (!window.BEAM_DATA) return;
-      const alpha = getSpectralAlpha();
-      const specFrac = alpha / ALPHA_MAX_15PCT; // Normalized to [0.0, 1.0]
+      const specFrac = spectralStep / TOTAL_SPECTRAL_STEPS; // in [0.0, 1.0]
       const u = getModeSpread();
       const baseVmax = window.BEAM_DATA.vmax_amp;
-      const effVmax = baseVmax * (0.55 + 0.45 * specFrac) * (0.65 + 0.35 * u);
+      const effVmax = baseVmax * (0.35 + 0.65 * specFrac) * (0.65 + 0.35 * u);
       gl.uniform1f(uLocs.vmaxAmp, effVmax);
     }
 
@@ -538,32 +488,36 @@
 
     function applyDivergenceScale() {
       // Geometric scaling: 2^(divStep / 15.0)
-      // Range: ~0.315x (step -25) to ~3.17x (step +25), default 1.0x (step 0)
       const scale = Math.pow(2.0, divStep / 15.0);
       gl.uniform1f(uLocs.divScale, scale);
       updateTopBar();
     }
 
-    function getSpectralAlpha() {
-      const u = spectralStep / TOTAL_SPECTRAL_STEPS;
-      // Monotonic smooth curve mapping [0.0, 1.0] to [0.0%, 15.0%] dE/E without overshoot
-      return Math.pow(u, 1.3) * ALPHA_MAX_15PCT;
-    }
-
     function applySpectralDistribution() {
-      // Non-linear alpha: 0.0 = only 1st beam, 1.0 = all 6 contribute equally
-      const alpha = getSpectralAlpha();
-      const w1 = baseAmps[0];
-      const w2 = baseAmps[1] * alpha;
-      const w3 = baseAmps[2] * alpha;
-      const w4 = baseAmps[3] * alpha;
-      const w5 = baseAmps[4] * alpha;
-      const w6 = baseAmps[5] * alpha;
+      if (!window.BEAM_DATA) return;
+      const k_vals = window.BEAM_DATA.k_values;
+      const w_lookup = window.BEAM_DATA.w_lookup;
+      const w = w_lookup ? w_lookup[spectralStep] : 50.0;
 
-      gl.uniform3f(uLocs.ampsA, w1, w2, w3);
-      gl.uniform3f(uLocs.ampsB, w4, w5, w6);
+      if (spectralStep === 0) {
+        // Monochromatic limit: strictly component 14 (k = 1.000) active -> dE/E = 0.0%
+        for (let j = 0; j < 30; j++) {
+          amps[j] = (j === 14) ? 1.0 : 0.0;
+        }
+      } else if (spectralStep === TOTAL_SPECTRAL_STEPS) {
+        // Maximum bandwidth limit: all 30 components contribute equally -> dE/E = 15.000%
+        for (let j = 0; j < 30; j++) {
+          amps[j] = 1.0;
+        }
+      } else {
+        // Gaussian spectral envelope centered at k = 1.000
+        for (let j = 0; j < 30; j++) {
+          const diff = k_vals[j] - 1.0;
+          amps[j] = Math.exp(-0.5 * (diff * diff) / (w * w));
+        }
+      }
 
-      // Dynamically re-normalize vmaxAmp so dynamic range and contrast remain vibrant
+      gl.uniform1fv(uLocs.amps, amps);
       updateEffectiveVmax();
       updateTopBar();
     }
@@ -586,34 +540,34 @@
     function updateTopBar() {
       const bar = document.getElementById("infoBar");
       if (!bar || bar.style.display === "none") return;
+      if (!window.BEAM_DATA) return;
 
-      // 1. Delta E / E and Coherence length Lc / lambda
-      const alpha = getSpectralAlpha();
-      const k_vals = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5];
-      const amps = [
-        baseAmps[0],
-        baseAmps[1] * alpha,
-        baseAmps[2] * alpha,
-        baseAmps[3] * alpha,
-        baseAmps[4] * alpha,
-        baseAmps[5] * alpha
-      ];
-      let sumP = 0.0;
-      let sumPE = 0.0;
-      for (let j = 0; j < 6; j++) {
-        const p = amps[j] * amps[j];
-        sumP += p;
-        sumPE += p * k_vals[j];
+      const k_vals = window.BEAM_DATA.k_values;
+
+      // 1. Delta E / E calculated from current amps and k_vals
+      let dE_over_E = 0.0;
+      if (spectralStep === 0) {
+        dE_over_E = 0.0;
+      } else if (spectralStep === TOTAL_SPECTRAL_STEPS) {
+        dE_over_E = 0.150;
+      } else {
+        let sumP = 0.0;
+        let sumPE = 0.0;
+        for (let j = 0; j < 30; j++) {
+          const p = amps[j] * amps[j];
+          sumP += p;
+          sumPE += p * k_vals[j];
+        }
+        const meanE = (sumP > 0) ? (sumPE / sumP) : 1.0;
+        let varE = 0.0;
+        for (let j = 0; j < 30; j++) {
+          const p = amps[j] * amps[j];
+          const diff = k_vals[j] - meanE;
+          varE += p * diff * diff;
+        }
+        const sigmaE = Math.sqrt(Math.max(0.0, varE / (sumP || 1.0)));
+        dE_over_E = (meanE > 0) ? (sigmaE / meanE) : 0.0;
       }
-      const meanE = sumPE / sumP;
-      let varE = 0.0;
-      for (let j = 0; j < 6; j++) {
-        const p = amps[j] * amps[j];
-        const diff = k_vals[j] - meanE;
-        varE += p * diff * diff;
-      }
-      const sigmaE = Math.sqrt(Math.max(0.0, varE / sumP));
-      const dE_over_E = sigmaE / meanE;
 
       const elDeE = document.getElementById("valDeOverE");
       if (elDeE) {
@@ -650,7 +604,6 @@
       }
 
       // 4. Fixed scale bar for reference of wavelength size (100 lambda)
-      // Wavelength is a fixed physical unit: bar always remains the exact same size
       const scaleLine = document.getElementById("scaleLine");
       const scaleText = document.getElementById("scaleText");
       if (scaleLine && scaleText) {
@@ -672,18 +625,13 @@
       // 2. Center permanently fixed at display center (no drift during mode variation)
       gl.uniform2f(uLocs.offset, 0.0, 0.0);
 
-      // 3. Random phase shifts for all 6 wavelengths in [0, 2pi)
-      const p1 = Math.random() * Math.PI * 2.0;
-      const p2 = Math.random() * Math.PI * 2.0;
-      const p3 = Math.random() * Math.PI * 2.0;
-      const p4 = Math.random() * Math.PI * 2.0;
-      const p5 = Math.random() * Math.PI * 2.0;
-      const p6 = Math.random() * Math.PI * 2.0;
-      gl.uniform3f(uLocs.phasesA, p1, p2, p3);
-      gl.uniform3f(uLocs.phasesB, p4, p5, p6);
+      // 3. Random phase shifts for all 30 wavelengths in [0, 2pi)
+      for (let j = 0; j < 30; j++) {
+        phases[j] = Math.random() * Math.PI * 2.0;
+      }
+      gl.uniform1fv(uLocs.phases, phases);
 
-      // 4. Calibrated equal base amplitude weights (ensures stable, consistent dE/E on refresh)
-      baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+      // 4. Calibrated spectral distribution (deterministic on refresh)
       applySpectralDistribution();
 
       // 5. Random loop starting phase and random speed variation (8s to 12s per loop)
@@ -726,25 +674,41 @@
 
       randomizeParameters();
 
-      function loadImage(src, unit) {
+      const numTextures = 15;
+      const numPixels = data.num_pixels || 512;
+
+      // Allocate TEXTURE_2D_ARRAY on unit 0
+      const texArray = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, texArray);
+      gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, numPixels, numPixels, numTextures, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+      function loadImage(src, layerIndex) {
         return new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = "anonymous";
           img.onload = () => {
-            gl.activeTexture(gl.TEXTURE0 + unit);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.bindTexture(gl.TEXTURE_2D_ARRAY, texArray);
+            gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, layerIndex, numPixels, numPixels, 1, gl.RGBA, gl.UNSIGNED_BYTE, img);
             resolve();
           };
           img.src = src;
         });
       }
 
-      Promise.all([
-        loadImage(data.tex0_b64 || "tex0.png", 0),
-        loadImage(data.tex1_b64 || "tex1.png", 1),
-        loadImage(data.tex2_b64 || "tex2.png", 2),
-      ]).then(() => {
+      const loadPromises = [];
+      for (let i = 0; i < numTextures; i++) {
+        const src = (data.tex_b64 && data.tex_b64[i]) ? data.tex_b64[i] : `tex${i}.png`;
+        loadPromises.push(loadImage(src, i));
+      }
+
+      Promise.all(loadPromises).then(() => {
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texArray);
+        gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
         resizeCanvas();
         const bar = document.getElementById("infoBar");
         if (bar) {
@@ -784,7 +748,7 @@
           currentNoiseAmount = Math.min(0.10, currentNoiseAmount + 0.01);
           gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
         } else {
-          // ArrowUp: step up non-linear curve (50 steps) -> towards all 6 equal
+          // ArrowUp: increase spectral bandwidth (up to 15.0% max across all 30 components)
           spectralStep = Math.min(TOTAL_SPECTRAL_STEPS, spectralStep + 1);
           applySpectralDistribution();
         }
@@ -795,7 +759,7 @@
           currentNoiseAmount = Math.max(0.0, currentNoiseAmount - 0.01);
           gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
         } else {
-          // ArrowDown: step down non-linear curve -> towards only 1st active
+          // ArrowDown: decrease spectral bandwidth (down to monochromatic 0.0% at k = 1.000)
           spectralStep = Math.max(0, spectralStep - 1);
           applySpectralDistribution();
         }
