@@ -117,7 +117,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=invert_arrows_20261022"></script>
+  <script src="beam_data.js?v=fixed_scale_bar_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -651,30 +651,16 @@
           : lcTransverse.toFixed(1);
       }
 
-      // 3. Scale bar for reference of wavelength size
+      // 4. Fixed scale bar for reference of wavelength size (100 lambda)
+      // Wavelength is a fixed physical unit: bar always remains the exact same size
       const scaleLine = document.getElementById("scaleLine");
       const scaleText = document.getElementById("scaleText");
       if (scaleLine && scaleText) {
-        const divScale = Math.pow(2.0, divStep / 15.0);
         const wScreen = window.innerWidth;
         const hScreen = window.innerHeight;
-        const ppw = Math.max(wScreen, hScreen) / (2600.0 * divScale);
-
-        const candidates = [5, 10, 20, 50, 100, 200, 500, 1000];
-        let bestLen = 100;
-        let minDiff = 999999;
-        const targetPx = 80;
-        for (const len of candidates) {
-          const px = len * ppw;
-          const diff = Math.abs(px - targetPx);
-          if (diff < minDiff && px >= 35 && px <= 160) {
-            minDiff = diff;
-            bestLen = len;
-          }
-        }
-        const barPx = Math.max(12, Math.round(bestLen * ppw));
+        const barPx = Math.max(16, Math.round((100.0 / 2600.0) * Math.max(wScreen, hScreen)));
         scaleLine.style.width = barPx + "px";
-        scaleText.textContent = bestLen + " λ";
+        scaleText.textContent = "100 λ";
       }
     }
 
