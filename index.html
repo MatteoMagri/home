@@ -34,7 +34,7 @@
 <body>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=gaussian_modes_20261022"></script>
+  <script src="beam_data.js?v=dynamic_gaussian_waist_20261022_1"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -220,13 +220,42 @@
       vec2 z5_00 = c00_5 * exp(-decay_5 * rad2);
       vec2 z6_00 = c00_6 * exp(-decay_6 * rad2);
 
-      // Blend smoothly: at u_modeMix = 0.0 strictly pure TEM00; at 1.0 full multi-mode
-      vec2 z1 = mix(z1_00, z1_tex, u_modeMix);
-      vec2 z2 = mix(z2_00, z2_tex, u_modeMix);
-      vec2 z3 = mix(z3_00, z3_tex, u_modeMix);
-      vec2 z4 = mix(z4_00, z4_tex, u_modeMix);
-      vec2 z5 = mix(z5_00, z5_tex, u_modeMix);
-      vec2 z6 = mix(z6_00, z6_tex, u_modeMix);
+      // Dynamic Gaussian beam waist expansion controlled by Left / Right arrow keys
+      // u_modeMix in [0.0, 1.0]:
+      // At u = 0.0, waist = w0 (strictly single TEM00 speckle, 35.4 px)
+      // As u increases, Gaussian waist W(u) expands smoothly from 35.4 px to 2600 px (full macroscopic Gaussian cloud)
+      // The spatial envelope across the beam is strictly Gaussian at every step!
+      float w_max = 0.2166667; // 2600.0 / 12000.0
+      float u_curve = pow(u_modeMix, 1.3);
+
+      // Dynamic waist for each wavelength
+      float w1_u = (1.0 / sqrt(decay_1)) + (w_max - (1.0 / sqrt(decay_1))) * u_curve;
+      float w2_u = (1.0 / sqrt(decay_2)) + (w_max - (1.0 / sqrt(decay_2))) * u_curve;
+      float w3_u = (1.0 / sqrt(decay_3)) + (w_max - (1.0 / sqrt(decay_3))) * u_curve;
+      float w4_u = (1.0 / sqrt(decay_4)) + (w_max - (1.0 / sqrt(decay_4))) * u_curve;
+      float w5_u = (1.0 / sqrt(decay_5)) + (w_max - (1.0 / sqrt(decay_5))) * u_curve;
+      float w6_u = (1.0 / sqrt(decay_6)) + (w_max - (1.0 / sqrt(decay_6))) * u_curve;
+
+      // Gaussian decay factor for cloud envelope at current size: decay = 1 / (w_u^2)
+      // Speckle component smoothly envelops with expanding Gaussian waist
+      float env1 = exp(-rad2 / (w1_u * w1_u));
+      float env2 = exp(-rad2 / (w2_u * w2_u));
+      float env3 = exp(-rad2 / (w3_u * w3_u));
+      float env4 = exp(-rad2 / (w4_u * w4_u));
+      float env5 = exp(-rad2 / (w5_u * w5_u));
+      float env6 = exp(-rad2 / (w6_u * w6_u));
+
+      float speckle_factor = smoothstep(0.0, 0.02, u_modeMix);
+
+      // z_tex = z_00 + z_speckle, so z_speckle = z_tex - z_00
+      // When u_modeMix = 0.0: speckle_factor = 0.0 -> strictly z_00 (pure analytical single speckle)
+      // As u_modeMix increases: Gaussian envelope widens, uncovering more and more speckles continuously!
+      vec2 z1 = z1_00 + (z1_tex - z1_00) * (speckle_factor * env1);
+      vec2 z2 = z2_00 + (z2_tex - z2_00) * (speckle_factor * env2);
+      vec2 z3 = z3_00 + (z3_tex - z3_00) * (speckle_factor * env3);
+      vec2 z4 = z4_00 + (z4_tex - z4_00) * (speckle_factor * env4);
+      vec2 z5 = z5_00 + (z5_tex - z5_00) * (speckle_factor * env5);
+      vec2 z6 = z6_00 + (z6_tex - z6_00) * (speckle_factor * env6);
 
       // Superposition referenced to primary carrier phase (10-cycle carrier demodulation)
       // Uses the cycling phase of the primary beam as reference to eliminate stroboscopic carrier flashing.
@@ -418,8 +447,7 @@
 
     function applyModeDistribution() {
       const u = getModeSpread(); // 1.0 = spread (right), 0.0 = pure TEM00 (left)
-      const mixVal = Math.pow(u, 1.3);
-      gl.uniform1f(uLocs.modeMix, mixVal);
+      gl.uniform1f(uLocs.modeMix, u);
       updateEffectiveVmax();
     }
 
