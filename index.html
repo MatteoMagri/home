@@ -117,7 +117,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=bandwidth_15pct_20261022"></script>
+  <script src="beam_data.js?v=stable_bandwidth_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -687,15 +687,8 @@
       gl.uniform3f(uLocs.phasesA, p1, p2, p3);
       gl.uniform3f(uLocs.phasesB, p4, p5, p6);
 
-      // 4. Random relative amplitude weights in [0.85, 1.15]
-      baseAmps = [
-        0.85 + Math.random() * 0.3,
-        0.85 + Math.random() * 0.3,
-        0.85 + Math.random() * 0.3,
-        0.85 + Math.random() * 0.3,
-        0.85 + Math.random() * 0.3,
-        0.85 + Math.random() * 0.3,
-      ];
+      // 4. Calibrated equal base amplitude weights (ensures stable, consistent dE/E on refresh)
+      baseAmps = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
       applySpectralDistribution();
 
       // 5. Random loop starting phase and random speed variation (8s to 12s per loop)
