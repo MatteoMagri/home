@@ -29,12 +29,95 @@
       display: block;
       cursor: pointer;
     }
+    .info-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: calc(100vh / 32);
+      min-height: 24px;
+      max-height: 48px;
+      background: #ffffff;
+      color: #111111;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-weight: 500;
+      font-size: clamp(10px, 1.25vh, 13px);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+      user-select: none;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+    .info-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #555555;
+    }
+    .info-value {
+      font-weight: 700;
+      color: #000000;
+    }
+    .scale-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .scale-graphic {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .scale-text {
+      font-size: clamp(9px, 1.1vh, 11px);
+      font-weight: 700;
+      line-height: 1;
+      color: #000000;
+      margin-bottom: 2px;
+    }
+    .scale-line {
+      height: 4px;
+      border-left: 2px solid #000000;
+      border-right: 2px solid #000000;
+      border-bottom: 2px solid #000000;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
+  <div id="infoBar" class="info-bar" style="display: none;">
+    <div class="info-item">
+      <span class="info-label">&Delta;E/E:</span>
+      <span id="valDeOverE" class="info-value">13.7%</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Coherence fraction:</span>
+      <span id="valCohFrac" class="info-value">1.4%</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">L<sub>c</sub>/&lambda;:</span>
+      <span id="valLcL" class="info-value">7.3</span>
+    </div>
+    <div class="info-item scale-item">
+      <span class="info-label">Scale:</span>
+      <div class="scale-graphic">
+        <div id="scaleText" class="scale-text">100 &lambda;</div>
+        <div id="scaleLine" class="scale-line"></div>
+      </div>
+    </div>
+  </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=dynamic_gaussian_waist_20261022_1"></script>
+  <script src="beam_data.js?v=top_info_bar_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -415,6 +498,7 @@
         canvas.height = Math.floor(h * dpr);
         gl.viewport(0, 0, canvas.width, canvas.height);
       }
+      updateTopBar();
     }
 
     window.addEventListener("resize", resizeCanvas);
@@ -449,6 +533,7 @@
       const u = getModeSpread(); // 1.0 = spread (right), 0.0 = pure TEM00 (left)
       gl.uniform1f(uLocs.modeMix, u);
       updateEffectiveVmax();
+      updateTopBar();
     }
 
     const MIN_DIV_STEP = -25;
@@ -460,6 +545,7 @@
       // Range: ~0.315x (step -25) to ~3.17x (step +25), default 1.0x (step 0)
       const scale = Math.pow(2.0, divStep / 15.0);
       gl.uniform1f(uLocs.divScale, scale);
+      updateTopBar();
     }
 
     function getSpectralAlpha() {
@@ -483,6 +569,113 @@
 
       // Dynamically re-normalize vmaxAmp so dynamic range and contrast remain vibrant
       updateEffectiveVmax();
+      updateTopBar();
+    }
+
+    // --- Top Info Bar Controls (Key 't') ---
+    let infoBarVisible = localStorage.getItem("infoBarVisible") === "true";
+
+    function toggleInfoBar() {
+      infoBarVisible = !infoBarVisible;
+      try {
+        localStorage.setItem("infoBarVisible", infoBarVisible);
+      } catch (err) {}
+      const bar = document.getElementById("infoBar");
+      if (bar) {
+        bar.style.display = infoBarVisible ? "flex" : "none";
+        if (infoBarVisible) updateTopBar();
+      }
+    }
+
+    function updateTopBar() {
+      const bar = document.getElementById("infoBar");
+      if (!bar || bar.style.display === "none") return;
+
+      // 1. Delta E / E and Coherence length Lc / lambda
+      const alpha = getSpectralAlpha();
+      const k_vals = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5];
+      const amps = [
+        baseAmps[0],
+        baseAmps[1] * alpha,
+        baseAmps[2] * alpha,
+        baseAmps[3] * alpha,
+        baseAmps[4] * alpha,
+        baseAmps[5] * alpha
+      ];
+      let sumP = 0.0;
+      let sumPE = 0.0;
+      for (let j = 0; j < 6; j++) {
+        const p = amps[j] * amps[j];
+        sumP += p;
+        sumPE += p * k_vals[j];
+      }
+      const meanE = sumPE / sumP;
+      let varE = 0.0;
+      for (let j = 0; j < 6; j++) {
+        const p = amps[j] * amps[j];
+        const diff = k_vals[j] - meanE;
+        varE += p * diff * diff;
+      }
+      const sigmaE = Math.sqrt(Math.max(0.0, varE / sumP));
+      const dE_over_E = sigmaE / meanE;
+
+      const elDeE = document.getElementById("valDeOverE");
+      if (elDeE) {
+        elDeE.textContent = (dE_over_E < 0.0005) ? "0.0%" : (dE_over_E * 100).toFixed(1) + "%";
+      }
+
+      const elLcL = document.getElementById("valLcL");
+      if (elLcL) {
+        if (dE_over_E < 0.0005) {
+          elLcL.textContent = "∞";
+        } else {
+          const lc = 1.0 / dE_over_E;
+          elLcL.textContent = lc >= 100 ? Math.round(lc).toString() : lc.toFixed(1);
+        }
+      }
+
+      // 2. Coherence fraction beta = w0 / W(u)
+      const u = getModeSpread();
+      const w0 = 35.355339;
+      const w_max = 2600.0;
+      const w_u = w0 + (w_max - w0) * Math.pow(u, 1.3);
+      const beta = w0 / w_u;
+      const elCohFrac = document.getElementById("valCohFrac");
+      if (elCohFrac) {
+        if (beta >= 0.999) {
+          elCohFrac.textContent = "100%";
+        } else if (beta >= 0.10) {
+          elCohFrac.textContent = (beta * 100).toFixed(1) + "%";
+        } else {
+          elCohFrac.textContent = (beta * 100).toFixed(2) + "%";
+        }
+      }
+
+      // 3. Scale bar for reference of wavelength size
+      const scaleLine = document.getElementById("scaleLine");
+      const scaleText = document.getElementById("scaleText");
+      if (scaleLine && scaleText) {
+        const divScale = Math.pow(2.0, divStep / 15.0);
+        const wScreen = window.innerWidth;
+        const hScreen = window.innerHeight;
+        const ppw = Math.max(wScreen, hScreen) / (2600.0 * divScale);
+
+        const candidates = [5, 10, 20, 50, 100, 200, 500, 1000];
+        let bestLen = 100;
+        let minDiff = 999999;
+        const targetPx = 80;
+        for (const len of candidates) {
+          const px = len * ppw;
+          const diff = Math.abs(px - targetPx);
+          if (diff < minDiff && px >= 35 && px <= 160) {
+            minDiff = diff;
+            bestLen = len;
+          }
+        }
+        const barPx = Math.max(12, Math.round(bestLen * ppw));
+        scaleLine.style.width = barPx + "px";
+        scaleText.textContent = bestLen + " λ";
+      }
     }
 
     function randomizeParameters() {
@@ -576,6 +769,11 @@
         loadImage(data.tex2_b64 || "tex2.png", 2),
       ]).then(() => {
         resizeCanvas();
+        const bar = document.getElementById("infoBar");
+        if (bar) {
+          bar.style.display = infoBarVisible ? "flex" : "none";
+          updateTopBar();
+        }
         requestAnimationFrame(render);
       });
     }
@@ -672,6 +870,8 @@
         else if (currentNoiseAmount <= 0.07) currentNoiseAmount = 0.10;
         else currentNoiseAmount = 0.0;
         gl.uniform1f(uLocs.noiseAmount, currentNoiseAmount);
+      } else if (e.code === "KeyT" || e.key === "t" || e.key === "T") {
+        toggleInfoBar();
       } else if (e.code === "Space") {
         randomizeParameters();
       }
