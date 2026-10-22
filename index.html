@@ -117,7 +117,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=coh_frac_1to100_20261022"></script>
+  <script src="beam_data.js?v=real_red_blue_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -378,24 +378,17 @@
         }
       } else if (u_colorMode == 2) {
         // 2. Real part: Re(psi) WITHOUT phase correction (true optical carrier oscillation: 10 cycles / loop)
+        // Bipolar Red & Blue: positive crests = Red, negative troughs = Blue, zero = Black
         float carrierAngle = TWO_PI * 10.0 * u_time + u_phasesA.x;
         vec2 psi_raw = rotate_phasor(psi, carrierAngle);
         float normReal = psi_raw.x / u_vmaxAmp;
         float bPos = clamp(pow(max(0.0, normReal), 0.85), 0.0, 1.0);
         float bNeg = clamp(pow(max(0.0, -normReal), 0.85), 0.0, 1.0);
-        color = vec3(1.0, 1.0, 1.0) * bPos + vec3(0.25, 0.65, 1.0) * bNeg;
+        vec3 redColor = vec3(1.0, 0.18, 0.15);
+        vec3 blueColor = vec3(0.18, 0.52, 1.0);
+        color = redColor * bPos + blueColor * bNeg;
         if (abs(normReal) > 1.0) {
           color += vec3(clamp((abs(normReal) - 1.0) * 0.5, 0.0, 0.35));
-        }
-      } else if (u_colorMode == 3) {
-        // 3. Real part: pure monochrome brightness showing Re(psi) without phase correction
-        float carrierAngle = TWO_PI * 10.0 * u_time + u_phasesA.x;
-        vec2 psi_raw = rotate_phasor(psi, carrierAngle);
-        float normReal = psi_raw.x / u_vmaxAmp;
-        float brightness = clamp(pow(max(0.0, normReal), 0.85), 0.0, 1.0);
-        color = vec3(brightness);
-        if (normReal > 1.0) {
-          color += vec3(clamp((normReal - 1.0) * 0.5, 0.0, 0.35));
         }
       }
 
@@ -837,14 +830,13 @@
         colorMode = 1;
         gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyR") {
-        // Key 'r': Switch to Real part mode (toggles between Bipolar and Pure Monochrome)
-        colorMode = (colorMode === 2) ? 3 : 2;
+        // Key 'r': Switch to Real part mode (Bipolar Red & Blue)
+        colorMode = 2;
         gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyC") {
-        // Key 'c': Cycle all modes: Amplitude (1) -> Phase (0) -> Real Bipolar (2) -> Real Mono (3)
+        // Key 'c': Cycle all modes: Amplitude (1) -> Phase (0) -> Real Part Red/Blue (2)
         if (colorMode === 1) colorMode = 0;
         else if (colorMode === 0) colorMode = 2;
-        else if (colorMode === 2) colorMode = 3;
         else colorMode = 1;
         gl.uniform1i(uLocs.colorMode, colorMode);
       } else if (e.code === "KeyN") {
