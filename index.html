@@ -117,7 +117,7 @@
   </div>
   <canvas id="glCanvas"></canvas>
 
-  <script src="beam_data.js?v=transversal_coherence_20261022"></script>
+  <script src="beam_data.js?v=invert_arrows_20261022"></script>
   <script>
     const vsSource = `#version 300 es
     in vec2 a_pos;
@@ -825,23 +825,23 @@
       } else if (e.code === "ArrowRight") {
         e.preventDefault();
         if (e.ctrlKey) {
-          // Ctrl+ArrowRight: divergence angle is increased
-          divStep = Math.min(MAX_DIV_STEP, divStep + 1);
+          // Ctrl+ArrowRight: divergence angle is decreased
+          divStep = Math.max(MIN_DIV_STEP, divStep - 1);
           applyDivergenceScale();
         } else {
-          // ArrowRight: spread variance of distribution over modes (richer speckles, higher modes)
-          modeStep = Math.min(TOTAL_MODE_STEPS, modeStep + 1);
+          // ArrowRight: narrow variance of distribution over modes (smooth speckles, fundamental core)
+          modeStep = Math.max(0, modeStep - 1);
           applyModeDistribution();
         }
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
         if (e.ctrlKey) {
-          // Ctrl+ArrowLeft: divergence angle is decreased
-          divStep = Math.max(MIN_DIV_STEP, divStep - 1);
+          // Ctrl+ArrowLeft: divergence angle is increased
+          divStep = Math.min(MAX_DIV_STEP, divStep + 1);
           applyDivergenceScale();
         } else {
-          // ArrowLeft: narrow variance of distribution over modes (smooth speckles, fundamental core)
-          modeStep = Math.max(0, modeStep - 1);
+          // ArrowLeft: spread variance of distribution over modes (richer speckles, higher modes)
+          modeStep = Math.min(TOTAL_MODE_STEPS, modeStep + 1);
           applyModeDistribution();
         }
       } else if (e.code === "KeyP") {
